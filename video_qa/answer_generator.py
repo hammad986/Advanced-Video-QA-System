@@ -10,12 +10,16 @@ Simplified architecture:
 """
 
 import re
+import os
 import requests
 from typing import Optional, Dict, Any, List
 
 from .config import config
 from .logger import get_logger
 from .confidence_scorer import compute_confidence
+from config_loader import load_config
+
+CONFIG = load_config()
 
 logger = get_logger(__name__)
 
@@ -40,6 +44,48 @@ def _is_not_found(answer: Optional[str]) -> bool:
         return True
     low = answer.lower().strip()
     return "not found in video" in low or "cannot be answered" in low
+
+
+def get_gemini_response(prompt: str) -> Optional[str]:
+    """Use Gemini API to generate text.
+
+    When running on Streamlit Cloud, API key is retrieved from `st.secrets`.
+    If not available, fall back to environment variables or the config.
+    """
+    try:
+        import google.generativeai as genai
+        try:
+            import streamlit as st
+            api_key = st.secrets.get("API_KEY") if hasattr(st, "secrets") else None
+        except Exception:
+            api_key = None
+
+        if not api_key:
+            api_key = os.environ.get("GEMINI_API_KEY") or config.get("answer.gemini_api_key", "")
+
+        if not api_key:
+            logger.error("Gemini API key not configured")
+            return None
+
+        genai.configure(api_key=api_key)
+        model_name = CONFIG.get("answer", {}).get("api_model", "gemini") or config.get("answer.gemini_model", "gemini-pro")
+        if model_name.lower().startswith("gemini"):
+            model_name = model_name
+        else:
+            model_name = "gemini-pro"
+
+        model = genai.GenerativeModel(model_name)
+        response = model.generate_content(prompt)
+
+        if response is None:
+            return None
+
+        text = getattr(response, "text", None)
+        return text.strip() if text else None
+
+    except Exception as exc:
+        logger.error(f"Gemini request failed: {exc}")
+        return None
 
 # ──────────────────────────────────────────────────────
 # Prompt Builder
@@ -99,14 +145,84 @@ def ask_local_llm(prompt: str, timeout: Optional[int] = None) -> Optional[str]:
         logger.error(f"LLM request failed: {e}")
         return None
 
+
+def ask_gemini_llm(prompt: str) -> Optional[str]:
+    """Ask Gemini API."""
+    return get_gemini_response(prompt)
+
+
+def ask_grok_llm(prompt: str) -> Optional[str]:
+    """Ask Grok API. Placeholder for compatibility with tests and future expansion."""
+    return None
+
+
+def ask_openai_llm(prompt: str) -> Optional[str]:
+    """Ask OpenAI Chat Completion."""
+    try:
+        import openai
+        api_key = os.environ.get("OPENAI_API_KEY") or config.get("answer.openai_api_key", "")
+        if not api_key or api_key == "${OPENAI_API_KEY}":
+            return None
+
+        client = openai.OpenAI(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=config.get("answer.openai_model", "gpt-4"),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=config.get("answer.max_tokens", 256),
+            temperature=0
+        )
+        text = resp.choices[0].message.content
+        return text.strip() if text else None
+
+    except Exception as e:
+        logger.error(f"OpenAI request failed: {e}")
+        return None
+
+
+def ask_huggingface_llm(prompt: str) -> Optional[str]:
+    """Ask HuggingFace Inference API."""
+    try:
+        if not config.get("answer.use_huggingface", False):
+            return None
+
+        from huggingface_hub import InferenceClient
+        token = os.environ.get("HF_TOKEN") or config.get("answer.hf_token", "")
+        if not token or token == "${HF_TOKEN}":
+            return None
+
+        client = InferenceClient(token=token)
+        resp = client.chat_completion(
+            model=config.get("answer.hf_model", "meta-llama/Llama-3.2-3B-Instruct"),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=config.get("answer.max_tokens", 256),
+            temperature=0.1
+        )
+        text = resp.choices[0].message.content
+        return text.strip() if text else None
+
+    except Exception as e:
+        logger.error(f"HuggingFace request failed: {e}")
+        return None
+
 def generate_with_fallback(prompt: str) -> Dict[str, str]:
     """
     Generate an answer trying multiple LLM providers.
-    Sequence: Ollama -> Gemini -> OpenAI -> HuggingFace -> Error
+    Sequence: local -> Gemini -> Ollama -> OpenAI -> HuggingFace -> Error
     """
     import os
 
-    # 1. Try Ollama
+    # If configured for cloud (no local), directly use Gemini first
+    if not config.get("answer.use_local", True):
+        gemini_answer = get_gemini_response(prompt)
+        if gemini_answer:
+            return {
+                "response": gemini_answer,
+                "provider": "gemini",
+                "status": "Using Gemini (cloud configuration)"
+            }
+        logger.warning("Gemini fallback in cloud mode returned no response. Continuing with fallback chain.")
+
+    # 1. Try Ollama (local mode)
     try:
         if config.get("answer.use_local", True):
             response = ask_local_llm(prompt)
@@ -202,6 +318,7 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
 # ──────────────────────────────────────────────────────
 
 def _extractive_fallback(
+    query: str,
     contexts: List[Dict[str, Any]],
 ) -> Optional[Dict[str, Any]]:
     """Extract the first 2 sentences from the top chunk as a grounded answer."""
@@ -227,14 +344,11 @@ def _extractive_fallback(
         "returning extractive answer from top context chunk."
     )
 
-    return {
-        "answer":           excerpt,
-        "timestamp":        format_time_range(start, end),
-        "retrieval_score":  top_ctx.get("score", 0.0),
-        "contexts":         contexts,
-        "verified":         False,
-        "fallback":         True,
-    }
+    response_text = (
+        f"Answer: {excerpt}\n"
+        f"Timestamp: {format_time_range(start, end)}"
+    )
+    return response_text
 
 # ──────────────────────────────────────────────────────
 # Main Entry Point

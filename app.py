@@ -6,6 +6,17 @@ Run this to start the Video Question Answering web interface
 import subprocess
 import sys
 import os
+from config_loader import load_config
+
+CONFIG = load_config()
+
+def is_cloud():
+    try:
+        import streamlit as st
+        return st.secrets.get("CLOUD", False)
+    except Exception:
+        return False
+
 
 def main():
     """Run the Streamlit Video-QA application."""

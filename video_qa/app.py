@@ -12,9 +12,12 @@ Fixes applied:
 
 import os
 from pathlib import Path
+from config_loader import load_config
 
 # BASE_DIR is the project root
 BASE_DIR = Path(__file__).parent.parent
+
+CONFIG = load_config()
 
 def running_on_streamlit_cloud():
     try:
@@ -26,6 +29,12 @@ def running_on_streamlit_cloud():
 
 # Global Cloud Flag
 IS_CLOUD = running_on_streamlit_cloud()
+
+def is_cloud():
+    try:
+        return st.secrets.get("CLOUD", False)
+    except Exception:
+        return False
 
 # Only load .env if NOT on cloud
 if not IS_CLOUD:
@@ -659,8 +668,8 @@ def _run_process_video(video_path: "str | None", youtube_url: "str | None" = Non
     Full processing pipeline.
     Shielded on Streamlit Cloud.
     """
-    if IS_CLOUD:
-        st.error("❌ **Heavy Pipeline Disabled**: Video processing (Whisper/FFmpeg) is disabled in the cloud version due to RAM limits. Please use the pre-processed demonstration data.")
+    if is_cloud():
+        st.error("⚠️ Video processing is disabled in cloud.\nPlease use preprocessed data.")
         return
 
     try:

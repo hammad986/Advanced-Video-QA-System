@@ -1,0 +1,29 @@
+speech:
+  model_size: "tiny"
+  device: "cpu"
+  compute_type: "int8"
+
+chunking:
+  method: "fixed"
+  fixed:
+    chunk_size_words: 120
+    overlap_words: 20
+
+embeddings:
+  model_name: "sentence-transformers/all-MiniLM-L6-v2"
+  device: "cpu"
+  batch_size: 16
+
+retrieval:
+  vector_db: "faiss"
+  top_k: 3
+
+answer:
+  use_local: false
+  api_model: "gemini"
+
+verification:
+  enabled: false
+
+logging:
+  level: "INFO"

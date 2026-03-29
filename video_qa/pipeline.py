@@ -307,7 +307,13 @@ class VideoQAPipeline:
 
         # Stage 5A: Query Rewrite
         logger.info("\n[QUERY REWRITE] Optimizing search query...")
-        search_query, provider = rewrite_query(query)
+        rewrite_result = rewrite_query(query)
+        if isinstance(rewrite_result, tuple):
+            search_query, provider = rewrite_result
+        else:
+            search_query = rewrite_result
+            provider = "rewriter"
+
         if search_query != query:
             logger.info(f"Using search query: '{search_query}' (via {provider})")
             # FIX: Re-check summary route with rewritten query strictly
