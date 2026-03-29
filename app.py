@@ -6,6 +6,11 @@ Run this to start the Video Question Answering web interface
 import subprocess
 import sys
 import os
+try:
+    import streamlit as st
+except ImportError:
+    st = None
+
 from config_loader import load_config
 
 CONFIG = load_config()
