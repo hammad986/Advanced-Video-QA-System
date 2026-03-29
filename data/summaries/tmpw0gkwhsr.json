@@ -1,0 +1,11 @@
+{
+  "video_id": "tmpw0gkwhsr",
+  "bullets": [
+    "• Collect more training data to reduce overfitting.",
+    "• Use fewer features by selecting the most relevant ones.",
+    "• Regularize parameters to reduce the impact of some features.",
+    "• Use regularization to prevent features from having overly large effects.",
+    "• Explore these techniques through an optional lab on overfitting."
+  ],
+  "raw": "• Collect more training data to reduce overfitting.\n• Use fewer features by selecting the most relevant ones.\n• Regularize parameters to reduce the impact of some features.\n• Use regularization to prevent features from having overly large effects.\n• Explore these techniques through an optional lab on overfitting.\nTimestamp: None"
+}

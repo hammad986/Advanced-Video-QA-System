@@ -1,0 +1,366 @@
+{
+  "video_name": "01_index",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 71,
+  "total_duration": 327.56,
+  "word_count": 802,
+  "full_transcript": "So, what is machine learning? In this video, you learn a definition of what it is and also get a sense of when you might want to apply it. Let's take a look together. Here's a definition of what is machine learning that is attributed to author Samuel. He defined machine learning as the field study that just computers depot the learn without being explicitly programmed. Sounds as claimed to fame was that back in the 1950s he wrote a Czechos playing program. And the amazing thing about this program was that author Samuel himself wasn't a very good Czechos player. and by watching what sorts of board positions tended to lead to wins, and what positions tended to lead to losses, the Czechos playing program learned over time, what a good or bad board positions. By trying to get to good and avoid bad positions, this program learned to get better and better at playing Czechos. Because the computer had the patience to play tens of thousands of games against himself, it was able to get so much... a better Czechos player than author Samuel himself. Now throughout these videos besides me trying to talk about stuff, I occasionally asked you a question to help make sure you understand the content. The biggest one about what happens is the computer had played far fewer games. Peace take a look and pick whichever you think is a better answer. Thanks for looking at the quiz. And so if you have selected this answer, whether they made it worse, then you got it right. In general, the more opportunities you give a learning algorithm to learn, the better it will perform. If you didn't select the correct answer the first time, that's totally okay to. The point of these quiz questions isn't to see you can get them all correct in the first try. These questions are here just to help you practice the concept you're learning. Awesome. we'll dive deeper together into one of the major types of machine learning algorithms. In this class, you learn about many different learning algorithms. The two main types of machine learning are supervised learning and unsupervised learning. We'll define what these terms mean more in the next couple of videos. Of these two, supervised learning is the type of... many real-world applications and that has seen the most rapid advancement and innovation. In this specialization which has three causes in total, the first and second causes will focus on supervised learning and the third will focus on unsupervised learning, fragment of systems and reinforcement learning. By far, the most used types of learning algorithms today are supervised learning and supervised learning. The other thing we're going to spend a lot of time on in the specialization is practical advice for applying learning algorithms. This is something I feel pretty strongly about. Teaching about learning algorithms is like giving someone a set of tools and equally important. So even more important, they're making sure you have great tools that is making sure you know how to apply them. Because you know, why good is it? If someone were to give you a... or a scenario handrail, and say, good luck, now you have all the tools you need to build a three story holes. Doesn't really work like that. And so too in machine learning, making sure you have the tools is really important. And so it's making sure that you know how to apply the tools of machine learning effectively. So that's what you get in this class, the tools as well as the skills of applying them effectively. I regularly visit with friends and teams in some... even today I see experience machine learning teams apply machine learning algorithms to some problems, and sometimes they've been going at it for six months without much success. And when I look at what they're doing, I sometimes feel like I could have told them six months ago that the current approach won't work. And there's a different way of using these tools that will give them a much by the chance of success. So in this class, one of the relatively unique things you learn is. This way, you're less likely to end up in one of those teams that end up losing six-one screen in the wrong direction. In this class, you gain a sense of how the most skilled machine learning engineers build systems, and I hope you finish this class as one of those very rare people in today's world that know how to design and build serious machine learning systems. So... learning and also what is unsupervised learning. In addition, you learn when you might want to use each of them supervised and unsupervised learning. I'll see you in the next video.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 6.36,
+      "text": "So, what is machine learning? In this video, you learn a definition of what it is and also"
+    },
+    {
+      "start": 6.36,
+      "end": 11.1,
+      "text": "get a sense of when you might want to apply it. Let's take a look together."
+    },
+    {
+      "start": 11.1,
+      "end": 17.1,
+      "text": "Here's a definition of what is machine learning that is attributed to author Samuel."
+    },
+    {
+      "start": 17.1,
+      "end": 22.46,
+      "text": "He defined machine learning as the field study that just computers depot the learn without"
+    },
+    {
+      "start": 22.46,
+      "end": 24.46,
+      "text": "being explicitly programmed."
+    },
+    {
+      "start": 24.7,
+      "end": 30.46,
+      "text": "Sounds as claimed to fame was that back in the 1950s he wrote a Czechos playing program."
+    },
+    {
+      "start": 30.46,
+      "end": 37.46,
+      "text": "And the amazing thing about this program was that author Samuel himself wasn't a very good Czechos player."
+    },
+    {
+      "start": 43.46,
+      "end": 47.46,
+      "text": "and by watching what sorts of board positions tended to lead to wins,"
+    },
+    {
+      "start": 47.46,
+      "end": 52.46,
+      "text": "and what positions tended to lead to losses, the Czechos playing program learned over time,"
+    },
+    {
+      "start": 52.46,
+      "end": 55.46,
+      "text": "what a good or bad board positions."
+    },
+    {
+      "start": 55.46,
+      "end": 62.46,
+      "text": "By trying to get to good and avoid bad positions, this program learned to get better and better at playing Czechos."
+    },
+    {
+      "start": 62.46,
+      "end": 67.53,
+      "text": "Because the computer had the patience to play tens of thousands of games against himself,"
+    },
+    {
+      "start": 67.53,
+      "end": 70.53,
+      "text": "it was able to get so much..."
+    },
+    {
+      "start": 73.42,
+      "end": 77.69,
+      "text": "a better Czechos player than author Samuel himself."
+    },
+    {
+      "start": 77.69,
+      "end": 82.65,
+      "text": "Now throughout these videos besides me trying to talk about stuff, I occasionally asked you"
+    },
+    {
+      "start": 82.65,
+      "end": 86.65,
+      "text": "a question to help make sure you understand the content."
+    },
+    {
+      "start": 86.73,
+      "end": 91.28999999999999,
+      "text": "The biggest one about what happens is the computer had played far fewer games."
+    },
+    {
+      "start": 91.28999999999999,
+      "end": 98.62,
+      "text": "Peace take a look and pick whichever you think is a better answer."
+    },
+    {
+      "start": 98.62,
+      "end": 100.62,
+      "text": "Thanks for looking at the quiz."
+    },
+    {
+      "start": 100.69,
+      "end": 105.2,
+      "text": "And so if you have selected this answer,"
+    },
+    {
+      "start": 105.2,
+      "end": 108.93,
+      "text": "whether they made it worse, then you got it right."
+    },
+    {
+      "start": 108.93,
+      "end": 111.49,
+      "text": "In general, the more opportunities you give a learning"
+    },
+    {
+      "start": 111.49,
+      "end": 114.97,
+      "text": "algorithm to learn, the better it will perform."
+    },
+    {
+      "start": 114.97,
+      "end": 117.85,
+      "text": "If you didn't select the correct answer the first time,"
+    },
+    {
+      "start": 117.85,
+      "end": 119.53,
+      "text": "that's totally okay to."
+    },
+    {
+      "start": 119.53,
+      "end": 122.28999999999999,
+      "text": "The point of these quiz questions isn't to see"
+    },
+    {
+      "start": 122.28999999999999,
+      "end": 124.81,
+      "text": "you can get them all correct in the first try."
+    },
+    {
+      "start": 124.81,
+      "end": 127.21000000000001,
+      "text": "These questions are here just to help you practice"
+    },
+    {
+      "start": 127.21000000000001,
+      "end": 129.38,
+      "text": "the concept you're learning."
+    },
+    {
+      "start": 129.38,
+      "end": 130.38,
+      "text": "Awesome."
+    },
+    {
+      "start": 133.97,
+      "end": 139.41,
+      "text": "we'll dive deeper together into one of the major types of machine learning algorithms."
+    },
+    {
+      "start": 139.41,
+      "end": 144.82999999999998,
+      "text": "In this class, you learn about many different learning algorithms."
+    },
+    {
+      "start": 144.82999999999998,
+      "end": 151.15,
+      "text": "The two main types of machine learning are supervised learning and unsupervised learning."
+    },
+    {
+      "start": 151.47,
+      "end": 155.39,
+      "text": "We'll define what these terms mean more in the next couple of videos."
+    },
+    {
+      "start": 156.45,
+      "end": 160.21,
+      "text": "Of these two, supervised learning is the type of..."
+    },
+    {
+      "start": 162.14,
+      "end": 169.26,
+      "text": "many real-world applications and that has seen the most rapid advancement and innovation."
+    },
+    {
+      "start": 169.26,
+      "end": 174.9,
+      "text": "In this specialization which has three causes in total, the first and second causes will"
+    },
+    {
+      "start": 174.9,
+      "end": 179.7,
+      "text": "focus on supervised learning and the third will focus on unsupervised learning,"
+    },
+    {
+      "start": 179.7,
+      "end": 186.22,
+      "text": "fragment of systems and reinforcement learning. By far, the most used types of learning"
+    },
+    {
+      "start": 186.22,
+      "end": 189.86,
+      "text": "algorithms today are supervised learning and supervised learning."
+    },
+    {
+      "start": 192.32,
+      "end": 194.32,
+      "text": "The other thing we're going to spend a lot of time on in"
+    },
+    {
+      "start": 194.32,
+      "end": 200.32,
+      "text": "the specialization is practical advice for applying learning algorithms."
+    },
+    {
+      "start": 200.32,
+      "end": 202.32,
+      "text": "This is something I feel pretty strongly about."
+    },
+    {
+      "start": 202.32,
+      "end": 207.32,
+      "text": "Teaching about learning algorithms is like giving someone a set of tools"
+    },
+    {
+      "start": 207.32,
+      "end": 209.32,
+      "text": "and equally important."
+    },
+    {
+      "start": 209.32,
+      "end": 213.32,
+      "text": "So even more important, they're making sure you have great tools"
+    },
+    {
+      "start": 213.32,
+      "end": 216.32,
+      "text": "that is making sure you know how to apply them."
+    },
+    {
+      "start": 216.32,
+      "end": 218.32,
+      "text": "Because you know, why good is it?"
+    },
+    {
+      "start": 218.32,
+      "end": 220.32,
+      "text": "If someone were to give you a..."
+    },
+    {
+      "start": 221.52,
+      "end": 224.08,
+      "text": "or a scenario handrail, and say, good luck,"
+    },
+    {
+      "start": 224.08,
+      "end": 227.36,
+      "text": "now you have all the tools you need to build a three story holes."
+    },
+    {
+      "start": 227.36,
+      "end": 229.36,
+      "text": "Doesn't really work like that."
+    },
+    {
+      "start": 229.36,
+      "end": 232.24,
+      "text": "And so too in machine learning,"
+    },
+    {
+      "start": 232.24,
+      "end": 234.96,
+      "text": "making sure you have the tools is really important."
+    },
+    {
+      "start": 234.96,
+      "end": 238.4,
+      "text": "And so it's making sure that you know how to apply the tools"
+    },
+    {
+      "start": 238.4,
+      "end": 240.8,
+      "text": "of machine learning effectively."
+    },
+    {
+      "start": 240.8,
+      "end": 242.64,
+      "text": "So that's what you get in this class,"
+    },
+    {
+      "start": 242.64,
+      "end": 247.01,
+      "text": "the tools as well as the skills of applying them effectively."
+    },
+    {
+      "start": 247.01,
+      "end": 251.01,
+      "text": "I regularly visit with friends and teams in some..."
+    },
+    {
+      "start": 252.02,
+      "end": 258.82,
+      "text": "even today I see experience machine learning teams apply machine learning algorithms to some problems,"
+    },
+    {
+      "start": 258.82,
+      "end": 264.34,
+      "text": "and sometimes they've been going at it for six months without much success. And when I look at"
+    },
+    {
+      "start": 264.34,
+      "end": 268.9,
+      "text": "what they're doing, I sometimes feel like I could have told them six months ago that the current"
+    },
+    {
+      "start": 268.9,
+      "end": 273.86,
+      "text": "approach won't work. And there's a different way of using these tools that will give them a much"
+    },
+    {
+      "start": 273.86,
+      "end": 279.78,
+      "text": "by the chance of success. So in this class, one of the relatively unique things you learn is."
+    },
+    {
+      "start": 287.08,
+      "end": 294.08,
+      "text": "This way, you're less likely to end up in one of those teams that end up losing six-one screen in the wrong direction."
+    },
+    {
+      "start": 294.08,
+      "end": 309.08,
+      "text": "In this class, you gain a sense of how the most skilled machine learning engineers build systems, and I hope you finish this class as one of those very rare people in today's world that know how to design and build serious machine learning systems."
+    },
+    {
+      "start": 309.08,
+      "end": 310.08,
+      "text": "So..."
+    },
+    {
+      "start": 315.96,
+      "end": 320.0,
+      "text": "learning and also what is unsupervised learning."
+    },
+    {
+      "start": 320.0,
+      "end": 325.2,
+      "text": "In addition, you learn when you might want to use each of them supervised and unsupervised"
+    },
+    {
+      "start": 325.2,
+      "end": 326.2,
+      "text": "learning."
+    },
+    {
+      "start": 326.2,
+      "end": 327.56,
+      "text": "I'll see you in the next video."
+    }
+  ]
+}

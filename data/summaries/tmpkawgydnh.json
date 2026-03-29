@@ -1,0 +1,11 @@
+{
+  "video_id": "tmpkawgydnh",
+  "bullets": [
+    "• The choice of features significantly impacts learning algorithm performance.",
+    "• Feature engineering involves creating new features by transforming or combining original ones.",
+    "• Example: Using lot area (width * depth) instead of separate width and depth features for house price prediction.",
+    "• New features can improve model accuracy based on problem insights.",
+    "• Feature engineering can enable fitting non-linear functions to data."
+  ],
+  "raw": "• The choice of features significantly impacts learning algorithm performance.\n• Feature engineering involves creating new features by transforming or combining original ones.\n• Example: Using lot area (width * depth) instead of separate width and depth features for house price prediction.\n• New features can improve model accuracy based on problem insights.\n• Feature engineering can enable fitting non-linear functions to data.\nTimestamp: None"
+}

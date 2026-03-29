@@ -1,0 +1,286 @@
+{
+  "video_name": "tmpuv9nfet9",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 55,
+  "total_duration": 494.22,
+  "word_count": 1279,
+  "full_transcript": "Later in this specialization, we'll talk about debugging and diagnosing things that can go wrong with learning algorithms. You also learn about specific tools to recognize when overfitting and underfitting may be occurring. But for now, when you think overfitting has occurred, let's talk about what we can do to address it. Let's say you fit the model and it has high variance in the overfitting. Here's our overfit house price prediction model. One way to address this problem is to collect more training data. So that's one option. If you're able to get more data, that is more training examples on sizes and prices of houses, then with the larger trading set, the learning algorithm will learn to fit a function that is less weekly. So you can continue to fit a high-order polynomial or some of the functions with a lot of features and if you have enough training examples, it will still do okay. So to summarize, the number one tool you can use against overfitting is to get more training data. Now, getting more data isn't always an option, maybe only so many houses have been sold in this location, so maybe they just isn't more data to be had. But when the data is available, this can work really well. A second option for agizing overfitting is to see it you can use fewer features. In the previous video, our models features included the size X as was the size squared and the size squared and XQ and X4 and so on. These were a lot of polynomial features. So in that case, one way to reduce overfitting is to just not use so many of these polynomial features. But now let's look at a different example. Maybe you have a lot of different features of a house, with which to try to predict a surprise, ranging from a size, number of bedrooms, number of floors, the age, average income of the neighborhood, and so on and so forth to the distance to the nearest coffee shop. It turns out that if you have a lot of features like these, but don't have enough training data, then your learning algorithm may also overfitting to your training set. Now, it's not using all 100 features if we were to pick just a subset of the most useful ones. Maybe size, bedrooms, and the age of the house. If you think those are the most relevant features, then using just that smaller subset of features, you may find that your model no longer has. So you can use the most important feature of the house, or the longer one of the things you need to know, the longer one of the things you need to know is the best way to use it. So you can use your intuition to choose what you think is the best and the best features. What's most relevant for predicting the price? Now, one disadvantage of features of the house is that by using only a subset of the features, the algorithm is throwing away some of the information you have about the houses. For example, maybe all of these features on 100 of them are actually useful for predicting the price of the house, so maybe you don't want to throw away some of the information by throwing away some of the features. Later in course, you also see some algorithms for automatically choosing the most appropriate set of features you use for prediction tools. Now, this takes us to the third option for reducing over 15. This technique, which we'll look at in even greater depth in the next video, is called regularization. If you look at an overfit model, here's a model using polynomial features xx squared xq and so on. You find that the parameters are often relatively large. Now, if you were to eliminate some of these features, say if you were to eliminate the feature x4, that corresponds to setting this parameter to 0. So setting a parameter to 0 is equivalent to eliminating a feature, which is what we saw on the previous slide. It turns out that regularization is a way to more gently reduce the impact of some of the features without doing something as harsh as eliminating it outright. What regularization does is encourage the learning algorithm to shrink the values of the parameters without necessarily demanding that the parameters set to exactly 0. And it turns out that even if you fit a higher order polynomial like this, so long as you can get the algorithm to use smaller parameter values, w1, w2, w3, w4, you end up with a curve to end up fitting the training data much better. So what regularization does is it lets you keep all of your features, but it just prevents the features from having a overly large effect, which is what sometimes can cause overfitting. By the way, by convention, we normally just reduce the size of the wj parameters that is w1 through wn. It kind of doesn't make a huge difference whether you regularize the parameter b as well. You could do so if you want or not if you don't, I usually don't, and it's just fine to regularize w1, w2 all the way to wn, but not really encourage b to become smaller. In practice, it should make very low difference whether you also regularize b or not. So to recap, these are the three ways you saw in this video for addressing overfitting. One, collect more data. If you can get more data, this can really help reduce overfitting. Sometimes that's not possible. In which case, some of the options are two, try selecting and using only a subset of the features. You learn more about feature selection in course two. Three would be to reduce the size of the parameters using regularization. This would be the subject of the next video as well. Just for myself, I used regularization all the time, so this is a very useful technique for training learning algorithms, including neural networks, specifically, which you see later in this specialization as well. I hope you also check out the optional lab on overfitting. In the lab, you will see different examples of overfitting, and adjust those examples by clicking on options in the plot. You also, be able to add your own data points by clicking on the plot and see how that changes the curve that is fit. You can also try examples of both regression and classification, and you will change the degree of the polynomial to be x, x, x, x, x, x, and so on. The lab also lets you play with two different options for accessing overfitting. You can add additional training data to reduce overfitting, and you can also select which features to include or to exclude as another way to try to reduce overfitting. So, please take a look at the lab, which I hope will help you build your intuition about overfitting as well as some methods for accessing it. In this video, you also saw the idea of regularization at a relatively high level. I realized that all of these details on regularization may not fully make sense to you yet, but in the next video, we'll start to formulate exactly how to apply regularization and exactly why regularization means. And then we'll start to figure out how to make this work with our learning algorithms to make linear regression and literacy regression and in the future other algorithms as well, avoid overfitting. Let's take a look at that in the next video.",
+  "segments": [
+    {
+      "start": 2.03,
+      "end": 9.03,
+      "text": "Later in this specialization, we'll talk about debugging and diagnosing things that can go wrong with learning algorithms."
+    },
+    {
+      "start": 9.03,
+      "end": 16.03,
+      "text": "You also learn about specific tools to recognize when overfitting and underfitting may be occurring."
+    },
+    {
+      "start": 16.03,
+      "end": 22.03,
+      "text": "But for now, when you think overfitting has occurred, let's talk about what we can do to address it."
+    },
+    {
+      "start": 22.03,
+      "end": 27.22,
+      "text": "Let's say you fit the model and it has high variance in the overfitting."
+    },
+    {
+      "start": 27.22,
+      "end": 31.74,
+      "text": "Here's our overfit house price prediction model."
+    },
+    {
+      "start": 31.74,
+      "end": 36.74,
+      "text": "One way to address this problem is to collect more training data."
+    },
+    {
+      "start": 36.74,
+      "end": 38.74,
+      "text": "So that's one option."
+    },
+    {
+      "start": 38.74,
+      "end": 45.74,
+      "text": "If you're able to get more data, that is more training examples on sizes and prices of houses,"
+    },
+    {
+      "start": 45.74,
+      "end": 53.74,
+      "text": "then with the larger trading set, the learning algorithm will learn to fit a function that is less weekly."
+    },
+    {
+      "start": 53.74,
+      "end": 59.74,
+      "text": "So you can continue to fit a high-order polynomial or some of the functions with a lot of features"
+    },
+    {
+      "start": 59.74,
+      "end": 63.74,
+      "text": "and if you have enough training examples, it will still do okay."
+    },
+    {
+      "start": 63.74,
+      "end": 71.47,
+      "text": "So to summarize, the number one tool you can use against overfitting is to get more training data."
+    },
+    {
+      "start": 71.47,
+      "end": 78.47,
+      "text": "Now, getting more data isn't always an option, maybe only so many houses have been sold in this location,"
+    },
+    {
+      "start": 78.47,
+      "end": 81.47,
+      "text": "so maybe they just isn't more data to be had."
+    },
+    {
+      "start": 81.47,
+      "end": 84.47,
+      "text": "But when the data is available, this can work really well."
+    },
+    {
+      "start": 84.47,
+      "end": 90.47,
+      "text": "A second option for agizing overfitting is to see it you can use fewer features."
+    },
+    {
+      "start": 90.47,
+      "end": 103.92,
+      "text": "In the previous video, our models features included the size X as was the size squared and the size squared and XQ and X4 and so on."
+    },
+    {
+      "start": 103.92,
+      "end": 106.92,
+      "text": "These were a lot of polynomial features."
+    },
+    {
+      "start": 107.98,
+      "end": 114.98,
+      "text": "So in that case, one way to reduce overfitting is to just not use so many of these polynomial features."
+    },
+    {
+      "start": 114.98,
+      "end": 117.98,
+      "text": "But now let's look at a different example."
+    },
+    {
+      "start": 117.98,
+      "end": 128.98,
+      "text": "Maybe you have a lot of different features of a house, with which to try to predict a surprise, ranging from a size, number of bedrooms, number of floors, the age, average income of the neighborhood,"
+    },
+    {
+      "start": 128.98,
+      "end": 132.98,
+      "text": "and so on and so forth to the distance to the nearest coffee shop."
+    },
+    {
+      "start": 132.98,
+      "end": 143.98,
+      "text": "It turns out that if you have a lot of features like these, but don't have enough training data, then your learning algorithm may also overfitting to your training set."
+    },
+    {
+      "start": 143.98,
+      "end": 149.98,
+      "text": "Now, it's not using all 100 features if we were to pick just a subset of the most useful ones."
+    },
+    {
+      "start": 149.98,
+      "end": 155.98,
+      "text": "Maybe size, bedrooms, and the age of the house."
+    },
+    {
+      "start": 155.98,
+      "end": 162.98,
+      "text": "If you think those are the most relevant features, then using just that smaller subset of features, you may find that your model no longer has."
+    },
+    {
+      "start": 162.98,
+      "end": 173.2,
+      "text": "So you can use the most important feature of the house, or the longer one of the things you need to know, the longer one of the things you need to know is the best way to use it."
+    },
+    {
+      "start": 173.2,
+      "end": 178.2,
+      "text": "So you can use your intuition to choose what you think is the best and the best features."
+    },
+    {
+      "start": 178.2,
+      "end": 181.33,
+      "text": "What's most relevant for predicting the price?"
+    },
+    {
+      "start": 181.33,
+      "end": 192.33,
+      "text": "Now, one disadvantage of features of the house is that by using only a subset of the features, the algorithm is throwing away some of the information you have about the houses."
+    },
+    {
+      "start": 192.33,
+      "end": 205.33,
+      "text": "For example, maybe all of these features on 100 of them are actually useful for predicting the price of the house, so maybe you don't want to throw away some of the information by throwing away some of the features."
+    },
+    {
+      "start": 205.33,
+      "end": 214.58,
+      "text": "Later in course, you also see some algorithms for automatically choosing the most appropriate set of features you use for prediction tools."
+    },
+    {
+      "start": 214.58,
+      "end": 218.62,
+      "text": "Now, this takes us to the third option for reducing over 15."
+    },
+    {
+      "start": 218.62,
+      "end": 225.62,
+      "text": "This technique, which we'll look at in even greater depth in the next video, is called regularization."
+    },
+    {
+      "start": 225.62,
+      "end": 235.13,
+      "text": "If you look at an overfit model, here's a model using polynomial features xx squared xq and so on."
+    },
+    {
+      "start": 235.13,
+      "end": 239.13,
+      "text": "You find that the parameters are often relatively large."
+    },
+    {
+      "start": 240.26,
+      "end": 247.26,
+      "text": "Now, if you were to eliminate some of these features, say if you were to eliminate the feature x4,"
+    },
+    {
+      "start": 247.26,
+      "end": 252.74,
+      "text": "that corresponds to setting this parameter to 0."
+    },
+    {
+      "start": 252.74,
+      "end": 260.74,
+      "text": "So setting a parameter to 0 is equivalent to eliminating a feature, which is what we saw on the previous slide."
+    },
+    {
+      "start": 260.74,
+      "end": 271.74,
+      "text": "It turns out that regularization is a way to more gently reduce the impact of some of the features without doing something as harsh as eliminating it outright."
+    },
+    {
+      "start": 271.74,
+      "end": 283.83,
+      "text": "What regularization does is encourage the learning algorithm to shrink the values of the parameters without necessarily demanding that the parameters set to exactly 0."
+    },
+    {
+      "start": 283.83,
+      "end": 299.93,
+      "text": "And it turns out that even if you fit a higher order polynomial like this, so long as you can get the algorithm to use smaller parameter values, w1, w2, w3, w4, you end up with a curve to end up fitting the training data much better."
+    },
+    {
+      "start": 299.93,
+      "end": 313.02,
+      "text": "So what regularization does is it lets you keep all of your features, but it just prevents the features from having a overly large effect, which is what sometimes can cause overfitting."
+    },
+    {
+      "start": 313.02,
+      "end": 328.7,
+      "text": "By the way, by convention, we normally just reduce the size of the wj parameters that is w1 through wn. It kind of doesn't make a huge difference whether you regularize the parameter b as well."
+    },
+    {
+      "start": 328.7,
+      "end": 340.7,
+      "text": "You could do so if you want or not if you don't, I usually don't, and it's just fine to regularize w1, w2 all the way to wn, but not really encourage b to become smaller."
+    },
+    {
+      "start": 340.7,
+      "end": 353.78,
+      "text": "In practice, it should make very low difference whether you also regularize b or not. So to recap, these are the three ways you saw in this video for addressing overfitting."
+    },
+    {
+      "start": 353.78,
+      "end": 371.36,
+      "text": "One, collect more data. If you can get more data, this can really help reduce overfitting. Sometimes that's not possible. In which case, some of the options are two, try selecting and using only a subset of the features."
+    },
+    {
+      "start": 371.36,
+      "end": 386.06,
+      "text": "You learn more about feature selection in course two. Three would be to reduce the size of the parameters using regularization. This would be the subject of the next video as well."
+    },
+    {
+      "start": 386.06,
+      "end": 398.26,
+      "text": "Just for myself, I used regularization all the time, so this is a very useful technique for training learning algorithms, including neural networks, specifically, which you see later in this specialization as well."
+    },
+    {
+      "start": 398.26,
+      "end": 412.29,
+      "text": "I hope you also check out the optional lab on overfitting. In the lab, you will see different examples of overfitting, and adjust those examples by clicking on options in the plot."
+    },
+    {
+      "start": 412.29,
+      "end": 432.48,
+      "text": "You also, be able to add your own data points by clicking on the plot and see how that changes the curve that is fit. You can also try examples of both regression and classification, and you will change the degree of the polynomial to be x, x, x, x, x, x, and so on."
+    },
+    {
+      "start": 432.48,
+      "end": 450.15,
+      "text": "The lab also lets you play with two different options for accessing overfitting. You can add additional training data to reduce overfitting, and you can also select which features to include or to exclude as another way to try to reduce overfitting."
+    },
+    {
+      "start": 450.15,
+      "end": 459.22,
+      "text": "So, please take a look at the lab, which I hope will help you build your intuition about overfitting as well as some methods for accessing it."
+    },
+    {
+      "start": 459.22,
+      "end": 479.22,
+      "text": "In this video, you also saw the idea of regularization at a relatively high level. I realized that all of these details on regularization may not fully make sense to you yet, but in the next video, we'll start to formulate exactly how to apply regularization and exactly why regularization means."
+    },
+    {
+      "start": 479.22,
+      "end": 494.22,
+      "text": "And then we'll start to figure out how to make this work with our learning algorithms to make linear regression and literacy regression and in the future other algorithms as well, avoid overfitting. Let's take a look at that in the next video."
+    }
+  ]
+}

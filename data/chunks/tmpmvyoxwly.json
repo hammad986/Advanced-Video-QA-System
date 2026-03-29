@@ -1,0 +1,24 @@
+{
+  "video_id": "tmpmvyoxwly",
+  "total_chunks": 2,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "tmpmvyoxwly",
+      "start": 1.39,
+      "end": 130.03,
+      "duration": 128.64,
+      "word_count": 300,
+      "text": "The choice of features can have a huge impact on your learning algorithms performance. In fact, for many practical applications, choosing or entering the right features is a critical step to making the algorithm work well. In this video, let's take a look at how you can choose or engineer the most appropriate features for your learning algorithm. Let's take a look at feature engineering by revisiting the example of predicting the price of a house. Say you have two features for each house. X1 is the width of the lot size of the plot of land at the house's built-on. depth of the lot size. Of this assume the rectangular plot of land that a house was built on. Given these two features, X1 and X2, you might build a model like this, where f of X is W1 X1 plus W1 X2 plus B, where X1 is the frontage of the whole width and X2 is the depth. And this model might work okay. way to use these features in the model that could be even more effective. You might notice that the area of the land can be calculated as the front-titch or with times the depth. And you may have an intuition that the area of the land is more predictive of the price, than the front-titch and depth as separate features. So you might define a new feature x3 as x1 times x2. So... With this feature, you can then have a model, FWP of X, equals W1, X1, plus W2, X2, plus W3, X3, plus B. So that the model can now choose parameters W1, W2, and W3, depending on whether the data shows it the front-ish or the death, or the area X3 of the plot turns out to the most important thing."
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "tmpmvyoxwly",
+      "start": 130.16,
+      "end": 184.85,
+      "duration": 54.69,
+      "word_count": 147,
+      "text": "for predicting the price of the house. What we just did, creating a new feature, is an example of what's called feature engineering, in which you might use your knowledge or intuition about the problem to design new features, usually by transforming or combining the original features of the problem in order to make it easier for the learning algorithm to make accurate predictions. So depending on what insights you may have into the application, rather than just taking the features that you happen. start off with, sometimes by defining your features, you might be able to get a much better model. So that's future engineering. And it turns out that there's one flavor of feature engineering that allow you to fit not just three lines, but curves, non-linear functions to your data. Let's take a look in the next video at how you can do that."
+    }
+  ]
+}

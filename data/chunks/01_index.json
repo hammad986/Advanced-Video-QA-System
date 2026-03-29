@@ -1,0 +1,33 @@
+{
+  "video_id": "01_index",
+  "total_chunks": 3,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "01_index",
+      "start": 0.0,
+      "end": 119.53,
+      "duration": 119.53,
+      "word_count": 294,
+      "text": "So, what is machine learning? In this video, you learn a definition of what it is and also get a sense of when you might want to apply it. Let's take a look together. Here's a definition of what is machine learning that is attributed to author Samuel. He defined machine learning as the field study that just computers depot the learn without being explicitly programmed. Sounds as claimed to fame was that back in the 1950s he wrote a Czechos playing program. And the amazing thing about this program was that author Samuel himself wasn't a very good Czechos player. and by watching what sorts of board positions tended to lead to wins, and what positions tended to lead to losses, the Czechos playing program learned over time, what a good or bad board positions. By trying to get to good and avoid bad positions, this program learned to get better and better at playing Czechos. Because the computer had the patience to play tens of thousands of games against himself, it was able to get so much... a better Czechos player than author Samuel himself. Now throughout these videos besides me trying to talk about stuff, I occasionally asked you a question to help make sure you understand the content. The biggest one about what happens is the computer had played far fewer games. Peace take a look and pick whichever you think is a better answer. Thanks for looking at the quiz. And so if you have selected this answer, whether they made it worse, then you got it right. In general, the more opportunities you give a learning algorithm to learn, the better it will perform. If you didn't select the correct answer the first time, that's totally okay to."
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "01_index",
+      "start": 119.53,
+      "end": 240.8,
+      "duration": 121.27,
+      "word_count": 293,
+      "text": "The point of these quiz questions isn't to see you can get them all correct in the first try. These questions are here just to help you practice the concept you're learning. Awesome. we'll dive deeper together into one of the major types of machine learning algorithms. In this class, you learn about many different learning algorithms. The two main types of machine learning are supervised learning and unsupervised learning. We'll define what these terms mean more in the next couple of videos. Of these two, supervised learning is the type of... many real-world applications and that has seen the most rapid advancement and innovation. In this specialization which has three causes in total, the first and second causes will focus on supervised learning and the third will focus on unsupervised learning, fragment of systems and reinforcement learning. By far, the most used types of learning algorithms today are supervised learning and supervised learning. The other thing we're going to spend a lot of time on in the specialization is practical advice for applying learning algorithms. This is something I feel pretty strongly about. Teaching about learning algorithms is like giving someone a set of tools and equally important. So even more important, they're making sure you have great tools that is making sure you know how to apply them. Because you know, why good is it? If someone were to give you a... or a scenario handrail, and say, good luck, now you have all the tools you need to build a three story holes. Doesn't really work like that. And so too in machine learning, making sure you have the tools is really important. And so it's making sure that you know how to apply the tools of machine learning effectively."
+    },
+    {
+      "chunk_id": 2,
+      "video_id": "01_index",
+      "start": 240.8,
+      "end": 327.56,
+      "duration": 86.76,
+      "word_count": 215,
+      "text": "So that's what you get in this class, the tools as well as the skills of applying them effectively. I regularly visit with friends and teams in some... even today I see experience machine learning teams apply machine learning algorithms to some problems, and sometimes they've been going at it for six months without much success. And when I look at what they're doing, I sometimes feel like I could have told them six months ago that the current approach won't work. And there's a different way of using these tools that will give them a much by the chance of success. So in this class, one of the relatively unique things you learn is. This way, you're less likely to end up in one of those teams that end up losing six-one screen in the wrong direction. In this class, you gain a sense of how the most skilled machine learning engineers build systems, and I hope you finish this class as one of those very rare people in today's world that know how to design and build serious machine learning systems. So... learning and also what is unsupervised learning. In addition, you learn when you might want to use each of them supervised and unsupervised learning. I'll see you in the next video."
+    }
+  ]
+}

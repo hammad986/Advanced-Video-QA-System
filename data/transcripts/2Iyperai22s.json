@@ -1,0 +1,786 @@
+{
+  "video_name": "2Iyperai22s",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 155,
+  "total_duration": 1058.46,
+  "word_count": 2615,
+  "full_transcript": "So, apparently, data science was dying seven months ago and it was dying two years ago and it was also dying three years ago and not to mention, apparently, it was also dying five years ago. However, from where I stand, this is definitely not the case. I see people land jobs in data science nearly every single week. I mean, I literally help people do this in my coaching program. So, what's on Earth is going on? Well, in this video, I want to break down what the current state of the data market looks like. What it actually means to be a data scientist nowadays and what you should be doing to land the job in this current climate. Let's get into it. As many of you will know, between 2022 and 2023, there were significant layoffs. The large being nearly 90,000 people being laid off in January, 2023 alone. In fact, the number of layoffs or so severe, their tech crunch even created an archive holder on the companies, people and jobs that are laid off every single month over this period. However, according to a study by 365 data science, data jobs were hardly affected. What they found was, interestingly, our samples, largest group of laid-off employees, did not hold tech jobs. 27.8% worked in HR and talent-sort sourcing. While software engineers came in seconds with 22.1% of the layoffs. Marketing employees followed them with 7.1% Costumer service with 4.6% PR, communications and strategy with 4.4%. For example, out of all the people who Amazon laid off over this period, only 2.7% had the title of data scientists. According to another study, data science job postings grew a hundred and 30% year of year after hitting Rob Bottom in July 2023. While data analysts openings grew 63% in the same time period. And as we can see from this plot on the screen here, the salaries in the data field are growing consistently over the last five years. So it's clear from all of this data that data science is not dying. If anything is actually growing, however, why does it then feel really difficult to actually get a data science job in today's market, especially for the junior or entry-level roles? Two answer that question, we need to look past the numbers and really understand what a modern data scientist actually looks like. As an insider into the field, let me tell you a secret. Data science is not dying. Rather, it's evolving. 10 years ago, companies would hire a data scientist to play around in Jupiter notebooks and build cookie cutter machine learning models. In fact, this was exactly what my first job was back in 2021. Back then, a data scientist was kind of like a Swiss army knife. Expect it to do loads of things, like data cleaning, analysis, model building, and even presenting your results to see in some cases. However, over time, companies realized that hiring a data scientist to simply do analysis and build models in Jupiter notebooks actually gave a very little ROI onto the business. So, they became a lot more stringent and strict on the exact responsibilities and roles of certain data professions. This has led the data scientist job title to become pretty fragmented. And if you're a data scientist, a one company, you may be doing a completely different job to a data scientist and another company. In general, there are three flavors of data scientists out there. The first one is a data analyst. So, this data scientist is a lot more close to the business side and is more responsible for things like experimentation, getting insights into machine learning models and do more of the analyst's core work to find out whether business can improve their revenue, their profits, their kind of retention, things like that. Just more of their analysis focus on areas of business can improve to make more money. For example, as a more analytical data scientist, what you would do is get data from a company data base or other sources, write some code that is very linear and bespoke by nature. Start with, we have ingesting data, cleaning it a bit, then doing some EDA and some influential or basic modeling work. Once that is complete, you put together a report that details the analysis provides visualizations and other metrics and then offer a recommendation based on their analysis goals. Like I said, this digger scientist is a lot more focus on the business side. So, you typically need more of the business sense and more the domain knowledge, it's really understand how data can be used to improve the business. If you are looking to become a data analyst, then I recommend you check out 365 data analyst career track, who are kindly sponsoring this video. This career track will teach you everything you need to know to land your dream data analyst job even if you're complete beginner. It will start by teaching the basics of data, Excel, SQL and Python and then move on to more advanced concepts like data processing and pandas. You will also build six projects to get real hands on experience using all the skills, tools and knowledge that it career track will teach you. 365 data science courses are credited by leading industry bodies and 9 and 10 of their graduates landed a new job in AI and data after enrollment. Some even at top tech companies like Microsoft, Apple and Amazon. So, as you can see, you'll be in great hands. I will leave all of this linked in the description below for you to check out. The second type of data scientist is more on the engineering aspect. In this data scientist, it's more focused on building and deploying solutions. This can be a range of things like internal software tooling. Machine learning models that drive business decision making or even just building internal libraries. This type of data scientist leads more into that software engineering aspect. But unlike a traditional software engineer, you also need skills and mass statistics and machine learning. Nowadays, this type of role has shifted away from the data scientist job title and is now is completely own field called a machine learning engineer. This role is not entry level though. You will typically need about two to three years working as a data scientist or software engineer first and then you can transition into becoming a machine learning engineer. So, if you are a complete beginner or graduate, I did not advise you to try and become a machine learning engineer right off the bat. Get a job as a data analyst, data scientist, data engineer, or software engineer first, then work there for a couple of years and then you can think about transitioning into the machine learning engineer job. Now the third type of data scientist is one who works on the infrastructure. This one is probably the most rare because most of the time, if you work in infrastructure of data, you're something called a data engineer. The goal of this role is simply to build infrastructure, pipelines and systems that allow the flow, access and the storage of data for the business. This data is then used downstream by people like machine learning engineers, software engineers, data analyst, and even non-tinnical stakeholders. To use that data to build models, see what a business is doing and just to get insight into what's going on. This role is becoming increasingly important and this is because of the rise of the Gen AI models, which require loads of data with very low latency which is quite a hard problem to solve and one more thing, at some companies, you may also have heard of something called the analytics engineer. Now this is very similar to a data engineer but it's a lot more business focused. So you typically sit downstream for data engineers. I know this is like so confusing and there's so many job titles in the data family, but trust me, once you work in this field, they all kind of make sense and they also you may also understand why they all needed. A study published back in September 2025 has been making quite a few waves inside the data science and machine learning community. The study examined 285,000 companies between 2015 and 2025 and how the adoption of Gen AI has changed their hiring processes for junior and senior roles. I will say that this study didn't only look at data scientists positions but every job within our company so take some of it with a pinch of salt. On screen here, you'll see a very interesting plot which shows the average employment versus time of junior and senior roles. You can see that for senior roles, the employment is increasing. But for junior roles, it was increasing and then after the release of charge BT and this big Gen AI wave, you see that the hiring is kind of slow down. If anything, it's become pretty flat. From what I've seen in the market and also from first-hand experience working in the field. This makes a lot of sense because a lot of the junior responsibilities is easier to automate and so it makes sense that you're automating a lot of the junior responsibilities using AI whereas the deeper knowledge that a seniors have is harder to replicate with the current state of the AI models. What I want to make clear though is that this chart is not saying that companies are making junior redundant or that there's no junior jobs available. It's simply saying that the rate of hiring is staying flat for juniors by increasing for seniors but this clearly still positions open in the market. Most people will look at this graph and say all junior jobs are becoming extinct but that is objectively just not the case. Hiring is clearly still happening. I mean I've seen a first-hand many of the clients I work with. The issue is the rates of hiring is plateauing but the supply is increasing but the demand is not increasing with it and so it feels like there is just less positions and impossible to get hired. So what can you do to get a job in data science? Well let me be honest with you. The market is clearly becoming tougher and it is more competitive but it's certainly not impossible. Gone other days where all you needed was basic Python and SQL and you did Android-Eun's machine learning course and then you got a job. That just doesn't happen anymore. These are things that everyone has nowadays so you really need to go the extra mile to make your portfolio applications stand out. Now there are many ways to make your applications stand out. For example you can specialize and become very good in one particular area. For example you could specialize in Gen AI model deployments, time series forecasting, recommendation systems or any domain specific expertise. I'd argue and this is what I've seen. Specialists are becoming increasingly valuable and important particularly with the way AI is democratizing but it's not democratizing knowledge for specialist. If you've studied an area for three, five, ten years you still have way more intuition and way more than tangible experience and knowledge as well than chat to be tea for example. So being a specialist plays in your favor now more than ever particularly like I said with the rise of AI. Another option is that you swallow your ego and you take a lower level position like a business analyst or a data analyst. For the record, these aren't low level jobs. It's more that they're slightly easier to break into then take the science or machine learning engineer if you have very little experience. Then after you've been in those jobs for a year or two you can then slowly make your transition into data science. This is a viable strategy and I've seen people do this and I also help people do this because once you're in the game it's not easier to move up the levels but if you're not in the game it's really hard to break in. You should also focus on areas that AI can't replace like communicating effectively with different audiences. Understanding the business impact of your work. Critical thinking and knowing what problems to solve strong fundamentals in maths and statistics, relationships and network. These are timeless skills, particularly the last one. You've probably heard the saying it's not what you know but who you know. Now I actually disagree with this statement. The real power is who knows you. If you have a solid network and relationship with many people in this field who trust and value you, you can tap into that to get referrals or opportunities or even network your way further and broaden your network even more. The leverage this provides is incredible. I always tell every single one of my coaching clients get a referral because a referral is literally a golden ticker to getting a data science job. Most people are just too scared to ask for things. Ask for referral, ask for a coffee chart, ask just as simply talk about the role or the experience in the field. Asking is a superpower particularly nowadays with loads of people are socially awkward and just flat out scared to try anything and all it requires is a little bit of effort and pushing yourself outside of a comfort zone. If you really want to job in data science you will do that process because why the hell would you not leverage every single thing that's available to you to get a job? And if you don't, I'm afraid you just don't really want to bad enough. Technologies will come and go. But actual human relationships and connections will stay a view for your whole career if not whole life. For being a data scientist you are going to need to reinvent yourself every three to five years because the field moves so quick. So invest your time in the things that don't change like relationships, communication skills and just being a well round professional because those things are timeless. So asking the question is data science dying is really missing the points. Data science is always kind of dying because it's always evolving and I'm afraid if you're willing to put up that fact then I don't think it's a career for you. But if you are someone who enjoys constantly learning, constantly pushing and really wanting to become like the best type of professional they can be then this field is somewhere you will thrive. If after watching this video you still want to become a data scientist that is a great first step but here is the reality. I've been in this field for nearly over five years. I'm looking back there are so many things I wish I did differently, particularly at a start of my journey so that I could improve how quickly I got my first job and also how quickly I could make impact in my first job. Problem is in today's hyper competitive market we haven't got a luxury of trial and error anymore. To avoid my mistakes and speed run your data science journey I recommend you check out this video which will teach you everything I would do again if I was looking to become a data scientist completely from scratch. I'll see you there.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 8.24,
+      "text": "So, apparently, data science was dying seven months ago and it was dying two years ago"
+    },
+    {
+      "start": 8.24,
+      "end": 18.02,
+      "text": "and it was also dying three years ago and not to mention, apparently, it was also dying five years ago."
+    },
+    {
+      "start": 18.02,
+      "end": 22.76,
+      "text": "However, from where I stand, this is definitely not the case."
+    },
+    {
+      "start": 22.76,
+      "end": 27.2,
+      "text": "I see people land jobs in data science nearly every single week."
+    },
+    {
+      "start": 27.2,
+      "end": 31.68,
+      "text": "I mean, I literally help people do this in my coaching program."
+    },
+    {
+      "start": 31.68,
+      "end": 34.08,
+      "text": "So, what's on Earth is going on?"
+    },
+    {
+      "start": 34.08,
+      "end": 40.12,
+      "text": "Well, in this video, I want to break down what the current state of the data market looks like."
+    },
+    {
+      "start": 40.12,
+      "end": 48.28,
+      "text": "What it actually means to be a data scientist nowadays and what you should be doing to land the job in this current climate."
+    },
+    {
+      "start": 48.28,
+      "end": 49.96,
+      "text": "Let's get into it."
+    },
+    {
+      "start": 49.96,
+      "end": 59.54,
+      "text": "As many of you will know, between 2022 and 2023, there were significant layoffs."
+    },
+    {
+      "start": 59.78,
+      "end": 65.86,
+      "text": "The large being nearly 90,000 people being laid off in January, 2023 alone."
+    },
+    {
+      "start": 65.86,
+      "end": 73.62,
+      "text": "In fact, the number of layoffs or so severe, their tech crunch even created an archive holder on the companies,"
+    },
+    {
+      "start": 73.62,
+      "end": 78.34,
+      "text": "people and jobs that are laid off every single month over this period."
+    },
+    {
+      "start": 78.34,
+      "end": 85.46,
+      "text": "However, according to a study by 365 data science, data jobs were hardly affected."
+    },
+    {
+      "start": 85.54,
+      "end": 94.23,
+      "text": "What they found was, interestingly, our samples, largest group of laid-off employees, did not hold tech jobs."
+    },
+    {
+      "start": 94.23,
+      "end": 98.83,
+      "text": "27.8% worked in HR and talent-sort sourcing."
+    },
+    {
+      "start": 98.83,
+      "end": 104.67,
+      "text": "While software engineers came in seconds with 22.1% of the layoffs."
+    },
+    {
+      "start": 104.67,
+      "end": 108.67,
+      "text": "Marketing employees followed them with 7.1%"
+    },
+    {
+      "start": 108.75,
+      "end": 116.03,
+      "text": "Costumer service with 4.6% PR, communications and strategy with 4.4%."
+    },
+    {
+      "start": 116.03,
+      "end": 125.31,
+      "text": "For example, out of all the people who Amazon laid off over this period, only 2.7% had the title of data scientists."
+    },
+    {
+      "start": 125.31,
+      "end": 135.63,
+      "text": "According to another study, data science job postings grew a hundred and 30% year of year after hitting Rob Bottom in July 2023."
+    },
+    {
+      "start": 135.63,
+      "end": 141.15,
+      "text": "While data analysts openings grew 63% in the same time period."
+    },
+    {
+      "start": 141.15,
+      "end": 147.87,
+      "text": "And as we can see from this plot on the screen here, the salaries in the data field are growing consistently"
+    },
+    {
+      "start": 147.87,
+      "end": 154.99,
+      "text": "over the last five years. So it's clear from all of this data that data science is not dying."
+    },
+    {
+      "start": 154.99,
+      "end": 161.71,
+      "text": "If anything is actually growing, however, why does it then feel really difficult to actually get a"
+    },
+    {
+      "start": 161.71,
+      "end": 166.83,
+      "text": "data science job in today's market, especially for the junior or entry-level roles?"
+    },
+    {
+      "start": 166.83,
+      "end": 173.39,
+      "text": "Two answer that question, we need to look past the numbers and really understand what a modern"
+    },
+    {
+      "start": 173.39,
+      "end": 182.82,
+      "text": "data scientist actually looks like. As an insider into the field, let me tell you a secret."
+    },
+    {
+      "start": 183.54,
+      "end": 189.62,
+      "text": "Data science is not dying. Rather, it's evolving. 10 years ago, companies would"
+    },
+    {
+      "start": 189.62,
+      "end": 195.78,
+      "text": "hire a data scientist to play around in Jupiter notebooks and build cookie cutter machine learning"
+    },
+    {
+      "start": 195.78,
+      "end": 203.06,
+      "text": "models. In fact, this was exactly what my first job was back in 2021. Back then, a data scientist"
+    },
+    {
+      "start": 203.06,
+      "end": 208.58,
+      "text": "was kind of like a Swiss army knife. Expect it to do loads of things, like data cleaning,"
+    },
+    {
+      "start": 208.58,
+      "end": 214.98,
+      "text": "analysis, model building, and even presenting your results to see in some cases. However,"
+    },
+    {
+      "start": 215.06,
+      "end": 221.86,
+      "text": "over time, companies realized that hiring a data scientist to simply do analysis and build models"
+    },
+    {
+      "start": 221.86,
+      "end": 229.78,
+      "text": "in Jupiter notebooks actually gave a very little ROI onto the business. So, they became a lot more stringent"
+    },
+    {
+      "start": 229.78,
+      "end": 237.06,
+      "text": "and strict on the exact responsibilities and roles of certain data professions. This has led the"
+    },
+    {
+      "start": 237.06,
+      "end": 244.1,
+      "text": "data scientist job title to become pretty fragmented. And if you're a data scientist, a one company,"
+    },
+    {
+      "start": 244.1,
+      "end": 250.42,
+      "text": "you may be doing a completely different job to a data scientist and another company. In general,"
+    },
+    {
+      "start": 250.42,
+      "end": 257.22,
+      "text": "there are three flavors of data scientists out there. The first one is a data analyst. So, this data"
+    },
+    {
+      "start": 257.22,
+      "end": 264.98,
+      "text": "scientist is a lot more close to the business side and is more responsible for things like experimentation,"
+    },
+    {
+      "start": 264.98,
+      "end": 270.74,
+      "text": "getting insights into machine learning models and do more of the analyst's core work to find out"
+    },
+    {
+      "start": 270.74,
+      "end": 278.58,
+      "text": "whether business can improve their revenue, their profits, their kind of retention, things like that."
+    },
+    {
+      "start": 278.58,
+      "end": 284.9,
+      "text": "Just more of their analysis focus on areas of business can improve to make more money. For example,"
+    },
+    {
+      "start": 284.9,
+      "end": 292.02,
+      "text": "as a more analytical data scientist, what you would do is get data from a company data base or other sources,"
+    },
+    {
+      "start": 292.66,
+      "end": 298.66,
+      "text": "write some code that is very linear and bespoke by nature. Start with, we have ingesting data,"
+    },
+    {
+      "start": 298.66,
+      "end": 304.42,
+      "text": "cleaning it a bit, then doing some EDA and some influential or basic modeling work."
+    },
+    {
+      "start": 304.98,
+      "end": 311.7,
+      "text": "Once that is complete, you put together a report that details the analysis provides visualizations and other"
+    },
+    {
+      "start": 311.7,
+      "end": 318.1,
+      "text": "metrics and then offer a recommendation based on their analysis goals. Like I said, this digger scientist"
+    },
+    {
+      "start": 318.1,
+      "end": 323.62,
+      "text": "is a lot more focus on the business side. So, you typically need more of the business sense and more"
+    },
+    {
+      "start": 323.62,
+      "end": 329.54,
+      "text": "the domain knowledge, it's really understand how data can be used to improve the business. If you are"
+    },
+    {
+      "start": 329.54,
+      "end": 336.82,
+      "text": "looking to become a data analyst, then I recommend you check out 365 data analyst career track,"
+    },
+    {
+      "start": 336.82,
+      "end": 342.34,
+      "text": "who are kindly sponsoring this video. This career track will teach you everything you need to know"
+    },
+    {
+      "start": 342.34,
+      "end": 347.94,
+      "text": "to land your dream data analyst job even if you're complete beginner. It will start by teaching"
+    },
+    {
+      "start": 347.94,
+      "end": 355.06,
+      "text": "the basics of data, Excel, SQL and Python and then move on to more advanced concepts like"
+    },
+    {
+      "start": 355.06,
+      "end": 362.66,
+      "text": "data processing and pandas. You will also build six projects to get real hands on experience using"
+    },
+    {
+      "start": 362.66,
+      "end": 369.38,
+      "text": "all the skills, tools and knowledge that it career track will teach you. 365 data science courses"
+    },
+    {
+      "start": 369.38,
+      "end": 377.3,
+      "text": "are credited by leading industry bodies and 9 and 10 of their graduates landed a new job in AI and"
+    },
+    {
+      "start": 377.3,
+      "end": 384.74,
+      "text": "data after enrollment. Some even at top tech companies like Microsoft, Apple and Amazon. So,"
+    },
+    {
+      "start": 384.74,
+      "end": 390.58,
+      "text": "as you can see, you'll be in great hands. I will leave all of this linked in the description below"
+    },
+    {
+      "start": 390.58,
+      "end": 396.82,
+      "text": "for you to check out. The second type of data scientist is more on the engineering aspect. In this"
+    },
+    {
+      "start": 396.82,
+      "end": 403.3,
+      "text": "data scientist, it's more focused on building and deploying solutions. This can be a range of things"
+    },
+    {
+      "start": 403.86,
+      "end": 409.78,
+      "text": "like internal software tooling. Machine learning models that drive business decision making"
+    },
+    {
+      "start": 409.78,
+      "end": 414.58,
+      "text": "or even just building internal libraries. This type of data scientist"
+    },
+    {
+      "start": 414.58,
+      "end": 420.66,
+      "text": "leads more into that software engineering aspect. But unlike a traditional software engineer,"
+    },
+    {
+      "start": 420.66,
+      "end": 427.22,
+      "text": "you also need skills and mass statistics and machine learning. Nowadays, this type of role"
+    },
+    {
+      "start": 427.22,
+      "end": 433.22,
+      "text": "has shifted away from the data scientist job title and is now is completely own field called"
+    },
+    {
+      "start": 433.22,
+      "end": 440.02,
+      "text": "a machine learning engineer. This role is not entry level though. You will typically need about"
+    },
+    {
+      "start": 440.02,
+      "end": 446.74,
+      "text": "two to three years working as a data scientist or software engineer first and then you can transition"
+    },
+    {
+      "start": 446.74,
+      "end": 453.94,
+      "text": "into becoming a machine learning engineer. So, if you are a complete beginner or graduate, I did not"
+    },
+    {
+      "start": 454.02,
+      "end": 460.42,
+      "text": "advise you to try and become a machine learning engineer right off the bat. Get a job as a"
+    },
+    {
+      "start": 460.42,
+      "end": 467.22,
+      "text": "data analyst, data scientist, data engineer, or software engineer first, then work there for a couple"
+    },
+    {
+      "start": 467.22,
+      "end": 473.14,
+      "text": "of years and then you can think about transitioning into the machine learning engineer job. Now the third"
+    },
+    {
+      "start": 473.14,
+      "end": 481.6,
+      "text": "type of data scientist is one who works on the infrastructure. This one is probably the most rare because"
+    },
+    {
+      "start": 482.4,
+      "end": 488.48,
+      "text": "most of the time, if you work in infrastructure of data, you're something called a data engineer."
+    },
+    {
+      "start": 488.48,
+      "end": 496.64,
+      "text": "The goal of this role is simply to build infrastructure, pipelines and systems that allow the flow,"
+    },
+    {
+      "start": 496.64,
+      "end": 504.4,
+      "text": "access and the storage of data for the business. This data is then used downstream by people like machine"
+    },
+    {
+      "start": 504.48,
+      "end": 511.12,
+      "text": "learning engineers, software engineers, data analyst, and even non-tinnical stakeholders. To"
+    },
+    {
+      "start": 511.12,
+      "end": 518.08,
+      "text": "use that data to build models, see what a business is doing and just to get insight into what's going on."
+    },
+    {
+      "start": 518.08,
+      "end": 525.84,
+      "text": "This role is becoming increasingly important and this is because of the rise of the Gen AI models,"
+    },
+    {
+      "start": 525.84,
+      "end": 532.96,
+      "text": "which require loads of data with very low latency which is quite a hard problem to solve and one"
+    },
+    {
+      "start": 532.96,
+      "end": 539.44,
+      "text": "more thing, at some companies, you may also have heard of something called the analytics engineer."
+    },
+    {
+      "start": 539.44,
+      "end": 545.76,
+      "text": "Now this is very similar to a data engineer but it's a lot more business focused. So you typically"
+    },
+    {
+      "start": 545.76,
+      "end": 553.36,
+      "text": "sit downstream for data engineers. I know this is like so confusing and there's so many job titles"
+    },
+    {
+      "start": 553.36,
+      "end": 560.0,
+      "text": "in the data family, but trust me, once you work in this field, they all kind of make sense and they also"
+    },
+    {
+      "start": 560.64,
+      "end": 570.91,
+      "text": "you may also understand why they all needed. A study published back in September 2025"
+    },
+    {
+      "start": 570.91,
+      "end": 578.35,
+      "text": "has been making quite a few waves inside the data science and machine learning community. The study examined"
+    },
+    {
+      "start": 578.35,
+      "end": 589.15,
+      "text": "285,000 companies between 2015 and 2025 and how the adoption of Gen AI has changed their hiring processes"
+    },
+    {
+      "start": 589.15,
+      "end": 596.11,
+      "text": "for junior and senior roles. I will say that this study didn't only look at data scientists"
+    },
+    {
+      "start": 596.11,
+      "end": 603.15,
+      "text": "positions but every job within our company so take some of it with a pinch of salt. On screen here,"
+    },
+    {
+      "start": 603.15,
+      "end": 610.83,
+      "text": "you'll see a very interesting plot which shows the average employment versus time of junior and senior roles."
+    },
+    {
+      "start": 611.39,
+      "end": 617.63,
+      "text": "You can see that for senior roles, the employment is increasing. But for junior roles,"
+    },
+    {
+      "start": 618.19,
+      "end": 624.91,
+      "text": "it was increasing and then after the release of charge BT and this big Gen AI wave,"
+    },
+    {
+      "start": 624.91,
+      "end": 631.31,
+      "text": "you see that the hiring is kind of slow down. If anything, it's become pretty flat. From what I've"
+    },
+    {
+      "start": 631.31,
+      "end": 638.43,
+      "text": "seen in the market and also from first-hand experience working in the field. This makes a lot of sense"
+    },
+    {
+      "start": 638.43,
+      "end": 645.79,
+      "text": "because a lot of the junior responsibilities is easier to automate and so it makes sense that"
+    },
+    {
+      "start": 645.87,
+      "end": 653.15,
+      "text": "you're automating a lot of the junior responsibilities using AI whereas the deeper knowledge"
+    },
+    {
+      "start": 653.15,
+      "end": 659.63,
+      "text": "that a seniors have is harder to replicate with the current state of the AI models. What I want to"
+    },
+    {
+      "start": 659.63,
+      "end": 666.91,
+      "text": "make clear though is that this chart is not saying that companies are making junior redundant or that"
+    },
+    {
+      "start": 666.91,
+      "end": 673.47,
+      "text": "there's no junior jobs available. It's simply saying that the rate of hiring is staying flat for"
+    },
+    {
+      "start": 673.47,
+      "end": 680.67,
+      "text": "juniors by increasing for seniors but this clearly still positions open in the market. Most people"
+    },
+    {
+      "start": 680.67,
+      "end": 687.63,
+      "text": "will look at this graph and say all junior jobs are becoming extinct but that is objectively just"
+    },
+    {
+      "start": 687.63,
+      "end": 694.67,
+      "text": "not the case. Hiring is clearly still happening. I mean I've seen a first-hand many of the clients I work with."
+    },
+    {
+      "start": 695.23,
+      "end": 703.18,
+      "text": "The issue is the rates of hiring is plateauing but the supply is increasing but the demand is not"
+    },
+    {
+      "start": 703.18,
+      "end": 710.38,
+      "text": "increasing with it and so it feels like there is just less positions and impossible to get hired."
+    },
+    {
+      "start": 714.26,
+      "end": 722.53,
+      "text": "So what can you do to get a job in data science? Well let me be honest with you. The market is clearly"
+    },
+    {
+      "start": 722.53,
+      "end": 730.13,
+      "text": "becoming tougher and it is more competitive but it's certainly not impossible. Gone other days where all you"
+    },
+    {
+      "start": 730.13,
+      "end": 737.57,
+      "text": "needed was basic Python and SQL and you did Android-Eun's machine learning course and then you got a job."
+    },
+    {
+      "start": 737.57,
+      "end": 744.05,
+      "text": "That just doesn't happen anymore. These are things that everyone has nowadays so you really need to go"
+    },
+    {
+      "start": 744.05,
+      "end": 750.93,
+      "text": "the extra mile to make your portfolio applications stand out. Now there are many ways to make your"
+    },
+    {
+      "start": 750.93,
+      "end": 757.57,
+      "text": "applications stand out. For example you can specialize and become very good in one particular area."
+    },
+    {
+      "start": 757.65,
+      "end": 764.13,
+      "text": "For example you could specialize in Gen AI model deployments, time series forecasting,"
+    },
+    {
+      "start": 764.69,
+      "end": 771.73,
+      "text": "recommendation systems or any domain specific expertise. I'd argue and this is what I've seen."
+    },
+    {
+      "start": 772.29,
+      "end": 779.41,
+      "text": "Specialists are becoming increasingly valuable and important particularly with the way AI is democratizing"
+    },
+    {
+      "start": 780.21,
+      "end": 787.04,
+      "text": "but it's not democratizing knowledge for specialist. If you've studied an area for three,"
+    },
+    {
+      "start": 787.04,
+      "end": 794.64,
+      "text": "five, ten years you still have way more intuition and way more than tangible experience and knowledge as"
+    },
+    {
+      "start": 794.64,
+      "end": 802.8,
+      "text": "well than chat to be tea for example. So being a specialist plays in your favor now more than ever"
+    },
+    {
+      "start": 803.44,
+      "end": 809.2,
+      "text": "particularly like I said with the rise of AI. Another option is that you swallow your ego and you take"
+    },
+    {
+      "start": 809.2,
+      "end": 816.0,
+      "text": "a lower level position like a business analyst or a data analyst. For the record, these aren't"
+    },
+    {
+      "start": 816.0,
+      "end": 822.08,
+      "text": "low level jobs. It's more that they're slightly easier to break into then take the science or"
+    },
+    {
+      "start": 822.08,
+      "end": 827.52,
+      "text": "machine learning engineer if you have very little experience. Then after you've been in those jobs"
+    },
+    {
+      "start": 827.52,
+      "end": 834.32,
+      "text": "for a year or two you can then slowly make your transition into data science. This is a viable strategy"
+    },
+    {
+      "start": 834.32,
+      "end": 840.72,
+      "text": "and I've seen people do this and I also help people do this because once you're in the game it's not"
+    },
+    {
+      "start": 840.72,
+      "end": 846.8,
+      "text": "easier to move up the levels but if you're not in the game it's really hard to break in. You should"
+    },
+    {
+      "start": 846.8,
+      "end": 854.59,
+      "text": "also focus on areas that AI can't replace like communicating effectively with different audiences."
+    },
+    {
+      "start": 855.23,
+      "end": 860.27,
+      "text": "Understanding the business impact of your work. Critical thinking and knowing what problems"
+    },
+    {
+      "start": 860.27,
+      "end": 869.66,
+      "text": "to solve strong fundamentals in maths and statistics, relationships and network. These are timeless skills,"
+    },
+    {
+      "start": 869.66,
+      "end": 876.3,
+      "text": "particularly the last one. You've probably heard the saying it's not what you know but who you know."
+    },
+    {
+      "start": 876.94,
+      "end": 884.46,
+      "text": "Now I actually disagree with this statement. The real power is who knows you. If you have a solid network"
+    },
+    {
+      "start": 884.78,
+      "end": 891.18,
+      "text": "and relationship with many people in this field who trust and value you, you can tap into that"
+    },
+    {
+      "start": 891.18,
+      "end": 897.58,
+      "text": "to get referrals or opportunities or even network your way further and broaden your network even more."
+    },
+    {
+      "start": 897.58,
+      "end": 904.7,
+      "text": "The leverage this provides is incredible. I always tell every single one of my coaching clients get a"
+    },
+    {
+      "start": 904.7,
+      "end": 911.82,
+      "text": "referral because a referral is literally a golden ticker to getting a data science job. Most people"
+    },
+    {
+      "start": 911.82,
+      "end": 918.46,
+      "text": "are just too scared to ask for things. Ask for referral, ask for a coffee chart, ask just as"
+    },
+    {
+      "start": 918.46,
+      "end": 924.7,
+      "text": "simply talk about the role or the experience in the field. Asking is a superpower particularly nowadays"
+    },
+    {
+      "start": 924.7,
+      "end": 932.7,
+      "text": "with loads of people are socially awkward and just flat out scared to try anything and all it requires"
+    },
+    {
+      "start": 932.7,
+      "end": 938.3,
+      "text": "is a little bit of effort and pushing yourself outside of a comfort zone. If you really want to"
+    },
+    {
+      "start": 938.3,
+      "end": 945.1,
+      "text": "job in data science you will do that process because why the hell would you not leverage every single"
+    },
+    {
+      "start": 945.1,
+      "end": 950.94,
+      "text": "thing that's available to you to get a job? And if you don't, I'm afraid you just don't really want"
+    },
+    {
+      "start": 950.94,
+      "end": 957.18,
+      "text": "to bad enough. Technologies will come and go. But actual human relationships and connections"
+    },
+    {
+      "start": 957.98,
+      "end": 964.14,
+      "text": "will stay a view for your whole career if not whole life. For being a data scientist you are going to"
+    },
+    {
+      "start": 964.14,
+      "end": 971.34,
+      "text": "need to reinvent yourself every three to five years because the field moves so quick. So invest"
+    },
+    {
+      "start": 971.34,
+      "end": 977.82,
+      "text": "your time in the things that don't change like relationships, communication skills and just being a well"
+    },
+    {
+      "start": 977.82,
+      "end": 984.62,
+      "text": "round professional because those things are timeless. So asking the question is data science dying"
+    },
+    {
+      "start": 985.42,
+      "end": 992.62,
+      "text": "is really missing the points. Data science is always kind of dying because it's always evolving"
+    },
+    {
+      "start": 993.26,
+      "end": 998.78,
+      "text": "and I'm afraid if you're willing to put up that fact then I don't think it's a career for you."
+    },
+    {
+      "start": 999.5,
+      "end": 1007.1,
+      "text": "But if you are someone who enjoys constantly learning, constantly pushing and really wanting to become"
+    },
+    {
+      "start": 1007.1,
+      "end": 1012.62,
+      "text": "like the best type of professional they can be then this field is somewhere you will thrive."
+    },
+    {
+      "start": 1012.62,
+      "end": 1018.94,
+      "text": "If after watching this video you still want to become a data scientist that is a great first step"
+    },
+    {
+      "start": 1018.94,
+      "end": 1025.42,
+      "text": "but here is the reality. I've been in this field for nearly over five years. I'm looking back"
+    },
+    {
+      "start": 1026.14,
+      "end": 1032.3,
+      "text": "there are so many things I wish I did differently, particularly at a start of my journey so that I could"
+    },
+    {
+      "start": 1032.3,
+      "end": 1038.22,
+      "text": "improve how quickly I got my first job and also how quickly I could make impact in my first job."
+    },
+    {
+      "start": 1038.22,
+      "end": 1044.86,
+      "text": "Problem is in today's hyper competitive market we haven't got a luxury of trial and error anymore."
+    },
+    {
+      "start": 1044.94,
+      "end": 1050.14,
+      "text": "To avoid my mistakes and speed run your data science journey I recommend you check out this"
+    },
+    {
+      "start": 1050.14,
+      "end": 1056.7,
+      "text": "video which will teach you everything I would do again if I was looking to become a data scientist completely"
+    },
+    {
+      "start": 1056.7,
+      "end": 1058.46,
+      "text": "from scratch. I'll see you there."
+    }
+  ]
+}

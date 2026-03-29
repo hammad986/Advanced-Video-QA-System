@@ -1,0 +1,286 @@
+{
+  "video_name": "tmpr1ufd5xl",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 55,
+  "total_duration": 365.92,
+  "word_count": 968,
+  "full_transcript": "Your learning algorithm will run much better with an appropriate choice of learning rate. They've been useful, it will run very slowly, and it is too large, it may not even converge. Let's take a look at how you can choose a good learning rate for your model. Contrately, if you plot the cost for a number of iterations, and notice that it costs sometimes goes up, and sometimes goes down, you should take that as a clear sign that gradient descent is not working properly. This could mean that there's a bugger in a code, or sometimes it could mean that you're learning rate is too large. So here's an illustration of what might be happening. Here, the vertical axis is a cost-function J, and the horizontal axis represents a parameter like maybe W1, and it's a learning rate is too big. Then if you start off here, your update step may overshoot the minimum and end up here, and in the next update step here, you're gain overshooting, so you end up here, and so on. And that's why the cost can sometimes go up instead of decreasing. To fix this, you can use a smaller learning rate, so then your updates may start here and go down a little bit and down a bit, and we'll hopefully consistently decrease until it reaches the global minimum. Sometimes you may see that the cost consistently increases after each iteration, like this curve here. This is also likely due to a learning rate that is too large, and it could be addressed by choosing a smaller learning rate. But learning rates like this could also be a sign of a possible bulk in a code. For example, if I wrote my code so that W1 gets updated as W1 plus alpha times this derivative term, this could result in the cost consistently increasing at each iteration. And this is because adding the derivative term moves your cost J further from the global minimum instead of closer. So remember, you want to use a minus sign, so the code should be updated, W1 updated by W1 minus alpha times the derivative term. One debugging tip for a correct implementation of gradient descent is that with a smaller not learning rate, the cost function should decrease on every single iteration. So if gradient descent isn't working, one thing I will often do, and I hope you find this tip useful too. One thing I'll often do is just set alpha to be a very, very small number, and see if that causes the cost to decrease on every iteration. If, even with alpha set to a very small number, J doesn't decrease on every single iteration, but instead sometimes increases, then that usually means there's a bulk somewhere in the code. Note that setting alpha to be really, really small is meant here as a debugging step, and a very, very small value of alpha, is not going to be the most efficient choice for actually training your learning algorithm. One important trade-off is that if your learning rate is too small, then gradient descent can take a lot of iterations to converge. So when I am running gradient descent, I will usually try a range of values for the learning rate alpha, sign my start by trying a learning rate of 0.001, and then I also try a learning rate as 10 times as large, say 0.01, and 0.1, and so on. And for each choice of alpha, you might run gradient descent just for a handful of iterations and plot the cost function, J, as a function of the number of iterations, and after trying a few different values, you might then pick the value of alpha that seems to decrease the learning rate rapidly, but also consistently. In fact, what I actually do is try a range of values like this. After trying 0.001, I'll then increase the learning rate 3, to 0.003, and after that, I'll try 0.01, which is again about 3 times as large as 0.003. So these are roughly trying out gradient descent with each value of alpha being roughly 3 times bigger than the previous value. So what I'll do is try a range of values until I found the value of this 2 small, and then also make sure I found the value of this 2 large, and I'll slowly try to pick the largest possible learning rate or just something slightly smaller than the largest reasonable value that I found. And when I do that, it usually gives me a good learning rate for my model. So I hope this technique, too, will be useful for you to choose a good learning rate for your implementation of gradient descent. In the upcoming optional lab, you can also take a look at how feature scaling is done in code, and also see how different choices of the learning rate alpha can lead to either better or worse training of your model. I hope you have fun playing with the value of alpha and seeing the outcomes of different choices of alpha. So please take a look and run the code in the optional lab to gain a deeper intuition about feature scaling as well as the learning rate alpha. Choosing learning rates is an important part of training many learning algorithms, and I hope that this video gives you an intuition about different choices and how to pick a good value for alpha. Now, the couple more ideas they can use to make multiple linear regression much more powerful. And that is choosing custom features which will also allow you to fit curves, not just a straight line to your data. Let's take a look at that in the next video.",
+  "segments": [
+    {
+      "start": 1.94,
+      "end": 6.82,
+      "text": "Your learning algorithm will run much better with an appropriate choice of learning rate."
+    },
+    {
+      "start": 6.82,
+      "end": 12.18,
+      "text": "They've been useful, it will run very slowly, and it is too large, it may not even converge."
+    },
+    {
+      "start": 12.18,
+      "end": 16.34,
+      "text": "Let's take a look at how you can choose a good learning rate for your model."
+    },
+    {
+      "start": 16.34,
+      "end": 21.3,
+      "text": "Contrately, if you plot the cost for a number of iterations,"
+    },
+    {
+      "start": 21.3,
+      "end": 26.58,
+      "text": "and notice that it costs sometimes goes up, and sometimes goes down,"
+    },
+    {
+      "start": 26.58,
+      "end": 31.3,
+      "text": "you should take that as a clear sign that gradient descent is not working properly."
+    },
+    {
+      "start": 31.3,
+      "end": 36.26,
+      "text": "This could mean that there's a bugger in a code, or sometimes it could mean that you're learning"
+    },
+    {
+      "start": 36.26,
+      "end": 41.14,
+      "text": "rate is too large. So here's an illustration of what might be happening."
+    },
+    {
+      "start": 41.98,
+      "end": 50.14,
+      "text": "Here, the vertical axis is a cost-function J, and the horizontal axis represents a parameter"
+    },
+    {
+      "start": 50.14,
+      "end": 57.42,
+      "text": "like maybe W1, and it's a learning rate is too big. Then if you start off here,"
+    },
+    {
+      "start": 57.5,
+      "end": 63.5,
+      "text": "your update step may overshoot the minimum and end up here, and in the next update step here,"
+    },
+    {
+      "start": 63.5,
+      "end": 70.46,
+      "text": "you're gain overshooting, so you end up here, and so on. And that's why the cost can sometimes go up"
+    },
+    {
+      "start": 70.46,
+      "end": 77.34,
+      "text": "instead of decreasing. To fix this, you can use a smaller learning rate, so then your updates may"
+    },
+    {
+      "start": 77.34,
+      "end": 83.34,
+      "text": "start here and go down a little bit and down a bit, and we'll hopefully consistently decrease"
+    },
+    {
+      "start": 83.34,
+      "end": 89.95,
+      "text": "until it reaches the global minimum. Sometimes you may see that the cost consistently increases"
+    },
+    {
+      "start": 89.95,
+      "end": 97.23,
+      "text": "after each iteration, like this curve here. This is also likely due to a learning rate that is too large,"
+    },
+    {
+      "start": 97.23,
+      "end": 104.05,
+      "text": "and it could be addressed by choosing a smaller learning rate. But learning rates like this could also"
+    },
+    {
+      "start": 104.05,
+      "end": 111.81,
+      "text": "be a sign of a possible bulk in a code. For example, if I wrote my code so that W1 gets updated"
+    },
+    {
+      "start": 112.21,
+      "end": 119.81,
+      "text": "as W1 plus alpha times this derivative term, this could result in the cost consistently increasing"
+    },
+    {
+      "start": 119.81,
+      "end": 127.17,
+      "text": "at each iteration. And this is because adding the derivative term moves your cost J further from the"
+    },
+    {
+      "start": 127.17,
+      "end": 133.73,
+      "text": "global minimum instead of closer. So remember, you want to use a minus sign, so the code should be"
+    },
+    {
+      "start": 133.73,
+      "end": 143.86,
+      "text": "updated, W1 updated by W1 minus alpha times the derivative term. One debugging tip for a correct"
+    },
+    {
+      "start": 143.86,
+      "end": 149.86,
+      "text": "implementation of gradient descent is that with a smaller not learning rate, the cost function should"
+    },
+    {
+      "start": 149.86,
+      "end": 157.63,
+      "text": "decrease on every single iteration. So if gradient descent isn't working, one thing I will often do,"
+    },
+    {
+      "start": 157.63,
+      "end": 163.71,
+      "text": "and I hope you find this tip useful too. One thing I'll often do is just set alpha to be a very,"
+    },
+    {
+      "start": 163.71,
+      "end": 172.99,
+      "text": "very small number, and see if that causes the cost to decrease on every iteration. If, even with"
+    },
+    {
+      "start": 172.99,
+      "end": 178.99,
+      "text": "alpha set to a very small number, J doesn't decrease on every single iteration, but instead sometimes"
+    },
+    {
+      "start": 178.99,
+      "end": 186.46,
+      "text": "increases, then that usually means there's a bulk somewhere in the code. Note that setting alpha to be"
+    },
+    {
+      "start": 186.46,
+      "end": 192.46,
+      "text": "really, really small is meant here as a debugging step, and a very, very small value of alpha,"
+    },
+    {
+      "start": 192.54,
+      "end": 196.54,
+      "text": "is not going to be the most efficient choice for actually training your learning algorithm."
+    },
+    {
+      "start": 197.26,
+      "end": 203.26,
+      "text": "One important trade-off is that if your learning rate is too small, then gradient descent can take a"
+    },
+    {
+      "start": 203.26,
+      "end": 210.3,
+      "text": "lot of iterations to converge. So when I am running gradient descent, I will usually try a range of"
+    },
+    {
+      "start": 210.3,
+      "end": 217.98,
+      "text": "values for the learning rate alpha, sign my start by trying a learning rate of 0.001, and then I also"
+    },
+    {
+      "start": 217.98,
+      "end": 226.19,
+      "text": "try a learning rate as 10 times as large, say 0.01, and 0.1, and so on. And for each choice of"
+    },
+    {
+      "start": 226.19,
+      "end": 232.83,
+      "text": "alpha, you might run gradient descent just for a handful of iterations and plot the cost function,"
+    },
+    {
+      "start": 232.83,
+      "end": 239.47,
+      "text": "J, as a function of the number of iterations, and after trying a few different values,"
+    },
+    {
+      "start": 239.47,
+      "end": 245.71,
+      "text": "you might then pick the value of alpha that seems to decrease the learning rate rapidly, but also"
+    },
+    {
+      "start": 246.03,
+      "end": 251.62,
+      "text": "consistently. In fact, what I actually do is try a range of values like this."
+    },
+    {
+      "start": 252.26,
+      "end": 262.66,
+      "text": "After trying 0.001, I'll then increase the learning rate 3, to 0.003, and after that, I'll try 0.01,"
+    },
+    {
+      "start": 263.3,
+      "end": 270.82,
+      "text": "which is again about 3 times as large as 0.003. So these are roughly trying out gradient descent with"
+    },
+    {
+      "start": 270.82,
+      "end": 278.3,
+      "text": "each value of alpha being roughly 3 times bigger than the previous value. So what I'll do is try"
+    },
+    {
+      "start": 278.3,
+      "end": 284.22,
+      "text": "a range of values until I found the value of this 2 small, and then also make sure I found the value of"
+    },
+    {
+      "start": 284.22,
+      "end": 291.5,
+      "text": "this 2 large, and I'll slowly try to pick the largest possible learning rate or just something slightly"
+    },
+    {
+      "start": 291.5,
+      "end": 297.74,
+      "text": "smaller than the largest reasonable value that I found. And when I do that, it usually gives me a"
+    },
+    {
+      "start": 297.74,
+      "end": 304.27,
+      "text": "good learning rate for my model. So I hope this technique, too, will be useful for you to choose a"
+    },
+    {
+      "start": 304.27,
+      "end": 311.2,
+      "text": "good learning rate for your implementation of gradient descent. In the upcoming optional lab,"
+    },
+    {
+      "start": 311.92,
+      "end": 318.0,
+      "text": "you can also take a look at how feature scaling is done in code, and also see how different choices"
+    },
+    {
+      "start": 318.0,
+      "end": 324.48,
+      "text": "of the learning rate alpha can lead to either better or worse training of your model. I hope you"
+    },
+    {
+      "start": 324.48,
+      "end": 329.68,
+      "text": "have fun playing with the value of alpha and seeing the outcomes of different choices of alpha."
+    },
+    {
+      "start": 330.32,
+      "end": 336.0,
+      "text": "So please take a look and run the code in the optional lab to gain a deeper intuition about feature"
+    },
+    {
+      "start": 336.0,
+      "end": 342.11,
+      "text": "scaling as well as the learning rate alpha. Choosing learning rates is an important part of training"
+    },
+    {
+      "start": 342.11,
+      "end": 347.15,
+      "text": "many learning algorithms, and I hope that this video gives you an intuition about different choices"
+    },
+    {
+      "start": 347.15,
+      "end": 353.6,
+      "text": "and how to pick a good value for alpha. Now, the couple more ideas they can use to make"
+    },
+    {
+      "start": 353.6,
+      "end": 360.08,
+      "text": "multiple linear regression much more powerful. And that is choosing custom features which will also"
+    },
+    {
+      "start": 360.08,
+      "end": 365.92,
+      "text": "allow you to fit curves, not just a straight line to your data. Let's take a look at that in the next video."
+    }
+  ]
+}

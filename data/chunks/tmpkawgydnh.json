@@ -1,0 +1,42 @@
+{
+  "video_id": "tmpkawgydnh",
+  "total_chunks": 4,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "tmpkawgydnh",
+      "start": 1.39,
+      "end": 77.32,
+      "duration": 75.93,
+      "word_count": 207,
+      "text": "The choice of features can have a huge impact on your learning algorithms performance. In fact, for many practical applications, choosing or entering the right features is a critical step to making the algorithm work well. In this video, let's take a look at how you can choose or engineer the most appropriate features for your learning algorithm. Let's take a look at feature engineering by revisiting the example of predicting the price of a house. Say you have two features for each house. X1 is the width of the lot size of the plot of land that the house is built on. This in real estate is also called the frontage of the lot. And the second feature, X2 is the depth of the lot size of less assume the rectangular plot of land that the house was built on. Given these two features, X1 and X2, you might build a model like this, where Fx is W1, X1, plus W2, plus B, where X1 is the frontage or width, and X2 is the depth. And this model might work okay, but here's another option for how you might choose a different way to use these features in the model that could be even more effective."
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "tmpkawgydnh",
+      "start": 77.32,
+      "end": 131.77,
+      "duration": 54.45,
+      "word_count": 139,
+      "text": "You might notice that the area of the land can be calculated as the frontage or width times the depth. And you may have an intuition that the area of the land is more predictive of the price than the frontage and depth as separate features. So you might define a new feature, X3 as X1 times X2, so this new feature X3 is equal to the area of the plot of land. With this feature, you can then have a model FWP of X, equals W1, X1, plus W2, X2, plus W3, plus B, so that the model can now choose parameters W1, W2, and W3, depending on whether the data shows the frontage or the depth or the area X3 of the lot turns out to the most important thing for predicting the price of the house."
+    },
+    {
+      "chunk_id": 2,
+      "video_id": "tmpkawgydnh",
+      "start": 131.77,
+      "end": 169.86,
+      "duration": 38.09,
+      "word_count": 100,
+      "text": "What we just did, creating a new feature, is an example of what's called feature engineering, in which you might use your knowledge or intuition about the problem to design new features. Usually by transforming or combining the original features of the problem in order to make it easier for the learning algorithm to make accurate predictions. So depending on what insights you may have into the application, rather than just taking the features that you happen to start off with, sometimes by defining new features you might be able to get a much better model. So that's feature engineering."
+    },
+    {
+      "chunk_id": 3,
+      "video_id": "tmpkawgydnh",
+      "start": 169.86,
+      "end": 182.96,
+      "duration": 13.1,
+      "word_count": 42,
+      "text": "And it turns out that there's one flavor of feature engineering that will allow you to fit not just trail lines, but curves, non-linear functions to your data. Let's take a look in the next video at how you can do that."
+    }
+  ]
+}

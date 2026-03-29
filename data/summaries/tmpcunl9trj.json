@@ -1,0 +1,11 @@
+{
+  "video_id": "tmpcunl9trj",
+  "bullets": [
+    "• One way to address overfitting is to collect more training data.",
+    "• Another option is to use fewer features by selecting the most relevant ones.",
+    "• Regularization can reduce the impact of some features without eliminating them.",
+    "• Regularization encourages smaller parameter values to fit the training data better.",
+    "• The lab provides hands-on experience with adjusting data and features to reduce overfitting."
+  ],
+  "raw": "• One way to address overfitting is to collect more training data.\n• Another option is to use fewer features by selecting the most relevant ones.\n• Regularization can reduce the impact of some features without eliminating them.\n• Regularization encourages smaller parameter values to fit the training data better.\n• The lab provides hands-on experience with adjusting data and features to reduce overfitting.\nTimestamp: None"
+}

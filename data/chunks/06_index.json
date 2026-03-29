@@ -1,0 +1,141 @@
+{
+  "video_id": "06_index",
+  "total_chunks": 15,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "06_index",
+      "start": 1.52,
+      "end": 41.9,
+      "duration": 40.38,
+      "word_count": 110,
+      "text": "In this video, we'll look at what the overall process of supervised learning this line. Specifically, you see the first model of this course, a linear regression model. That just means setting a straight line to your data. It's probably the most widely used learning algorithm in the world today. And as you get familiar with linear regression, many of the concepts you see here will also apply to other machine learning models, models that you see later in this specialization. Let's start with a problem that you can address using linear regression. Say you want to predict the price of a house based on the size of a house."
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "06_index",
+      "start": 41.9,
+      "end": 76.35,
+      "duration": 34.45,
+      "word_count": 99,
+      "text": "This is the example we see in earlier this week. But going to use a dataset on house sizes and prices from Portland, a city in the United States. Here with a graph where the horizontal axis is the size of a house in the square feet. And the vertical axis is the price of house in thousands of dollars. Let's go ahead and plot the data points for various houses in the dataset. Here at each data point, each of these little crosses is a house with a size and a price that most recently was so full."
+    },
+    {
+      "chunk_id": 2,
+      "video_id": "06_index",
+      "start": 76.35,
+      "end": 100.83,
+      "duration": 24.48,
+      "word_count": 74,
+      "text": "Now, let's say you're a state agent in Portland. And you're hoping a client sell her house. And she's asking you how much do you think can get for this house? The dataset might help you estimate the price she could get for it. You start by measuring the size of the house and it turns out that her house is 1,250 square feet. How much do you think this house is so full?"
+    },
+    {
+      "chunk_id": 3,
+      "video_id": "06_index",
+      "start": 100.83,
+      "end": 123.92,
+      "duration": 23.09,
+      "word_count": 63,
+      "text": "One thing you could do is you can build a linear regression model from the dataset. Your model will fit the straight line to the data which might look like this. And based on this straight line fit to the data, you can kind of see that if a house is 1,250 square feet, it will intersect the best fit line over here."
+    },
+    {
+      "chunk_id": 4,
+      "video_id": "06_index",
+      "start": 123.92,
+      "end": 143.92,
+      "duration": 20.0,
+      "word_count": 56,
+      "text": "And if you trace that to the vertical axis on the left, you can see the prices may be around here. Say about $220,000. So this is an example of what's called a supervised learning model. We call this supervised learning because you are first training a model by giving a data that has bright answers."
+    },
+    {
+      "chunk_id": 5,
+      "video_id": "06_index",
+      "start": 143.92,
+      "end": 192.02,
+      "duration": 48.1,
+      "word_count": 119,
+      "text": "Because you give the model examples of houses with both the size of the house as well as the price that the model should predict for each house. We're here at the prices that is the right answers I give in for every house in the dataset. This linear regression model is a particular type of supervised learning model. It's currently a compression model because it predicts numbers as the output like prices and dollars. And you supervise learning model that predicts a number such as 220,000 or 1.5 or negative 33.2 is actually what's called a regression problem. So linear regression is one example of a regression model, but there are other models for accessing regression problems too."
+    },
+    {
+      "chunk_id": 6,
+      "video_id": "06_index",
+      "start": 192.02,
+      "end": 263.62,
+      "duration": 71.6,
+      "word_count": 161,
+      "text": "And we'll see some of those later in course two of this specialization. And just remind you, in contrast with the regression model, the other most common type of supervised learning model is called a classification model. A classification model predicts categories or discrete categories such as predicting if a picture is a recap now or a dog wolf or if given a medical record, it has predicts a patient as a particular disease. You see more about classification models later in this course as well. So as reminder about the difference between classification and regression, the classification, there are only a small number of possible outputs. If your model is recognizing cats versus dogs, that's two possible outputs or maybe a trend to recognize any of 10 possible medical conditions in a patient. So this discrete finite set of possible outputs, we call a classification problem whereas in regression, there are infinitely many possible numbers that the model could output."
+    },
+    {
+      "chunk_id": 7,
+      "video_id": "06_index",
+      "start": 263.62,
+      "end": 342.06,
+      "duration": 78.44,
+      "word_count": 153,
+      "text": "In addition to visualizing this data as a plot here on the left, this one of the way of looking at the data that would be useful. And that's a data table here on the right. The data comprises a set of inputs. This would be the size of the house which is this column here. It also has outputs you're trying to predict the price which is this column here. Notice that the horizontal and vertical axis corresponds to these two columns, the size and the price. And so if you have say 47 rows in this data table, then there are 47 of these lower crosses on the plot of the left. Each cross corresponding to one row of the table. For example, the first row of the table is a house with size 214 square feet, so that's around here. And this house so for $400,000, which is around here."
+    },
+    {
+      "chunk_id": 8,
+      "video_id": "06_index",
+      "start": 342.06,
+      "end": 380.28,
+      "duration": 38.22,
+      "word_count": 95,
+      "text": "So this first row of the table is plotted as this data point over here. Now let's look at some notation for describing the data. This is notation that you find useful throughout your journey in machine learning. As you increasingly get familiar with machine learning terminology, this will be paternality they can use to talk about machine learning concepts with others as well. Since a lot of this is quite standard across AI. You'll be seeing this notation multiple times in specialization, so it's okay if you don't remember everything the first time through."
+    },
+    {
+      "chunk_id": 9,
+      "video_id": "06_index",
+      "start": 380.28,
+      "end": 413.62,
+      "duration": 33.34,
+      "word_count": 81,
+      "text": "It will naturally become more familiar over time. The data set that you just saw and that is used to train the model is called a training set. Note that your client's house is not in this data set because it's not yet sold, so no one knows what it's prices. So to predict the price of your client's house, you first train your model to learn from the training set. And that model can then predict your client's house's price."
+    },
+    {
+      "chunk_id": 10,
+      "video_id": "06_index",
+      "start": 413.62,
+      "end": 438.78,
+      "duration": 25.16,
+      "word_count": 51,
+      "text": "Then machine learning the standard notation to denote the input here is lowercase x, and we call this the input variable. It's also called a feature or an input feature. For example, for the first house in your training set, x is the size of the house, so x equals 214."
+    },
+    {
+      "chunk_id": 11,
+      "video_id": "06_index",
+      "start": 438.78,
+      "end": 527.13,
+      "duration": 88.35,
+      "word_count": 172,
+      "text": "The standard notation to denote the output variable, which you're trying to predict, which is also sometimes called the target variable is lowercase y. And so here y is the price of the house, and for the first training example, this is equal to 400, so y equals 400. So the data set has one row for each house, and in this particular training set there are 47 rows with each row representing a different training example. We're going to use lowercase m to refer to the total number of training examples, and so here m is equal to 47. To indicate a single training example, we're going to use the notation parentheses x, comma y. So for the first training example, x, comma y, this pair of numbers is 2001 and 2004, comma 400. Now we have a lot of different training examples. We have 47 of them in fact, so to refer to a specific training example, this will correspond to a specific row in this table on the left."
+    },
+    {
+      "chunk_id": 12,
+      "video_id": "06_index",
+      "start": 527.13,
+      "end": 565.05,
+      "duration": 37.92,
+      "word_count": 66,
+      "text": "On greater use of notation x superscript in parentheses i, comma y superscript in parentheses i. The superscript tells us that this is the i training example, such as the first second or third up to the 47 training example. i here refers to a specific row in the table. So for instance, here is the first example when i equals 1 in the training set."
+    },
+    {
+      "chunk_id": 13,
+      "video_id": "06_index",
+      "start": 565.05,
+      "end": 623.22,
+      "duration": 58.17,
+      "word_count": 137,
+      "text": "And so x superscript 1 is equal to 2001 and 2004 and y superscript 1 is equal to 400. And let's add the superscript 1 here as well. Just a note, this superscript i in parentheses is not exponentiation. So when I write this, this is not x squared. This is not x the power 2. It just refers to the second training example. So this i is just an index in the training set and refers to row i in the table. In this video you saw what a training set is like as was a standard notation for describing this training set. In the next video, let's look at what will take to take this training set is your saw and feed it to learning algorithm so that the algorithm can learn from this data."
+    },
+    {
+      "chunk_id": 14,
+      "video_id": "06_index",
+      "start": 623.22,
+      "end": 625.22,
+      "duration": 2.0,
+      "word_count": 7,
+      "text": "Let's see that in the next video."
+    }
+  ]
+}

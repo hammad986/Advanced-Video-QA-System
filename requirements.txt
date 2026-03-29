@@ -1,0 +1,24 @@
+# --- Core UI & App ---
+streamlit
+python-dotenv
+PyYAML
+requests
+joblib
+pydantic
+
+# --- RAG & AI ---
+langchain
+langchain-core
+faiss-cpu
+sentence-transformers
+numpy
+pandas
+
+# --- LLM Providers ---
+google-generativeai
+openai
+
+# --- Utils ---
+# yt-dlp        # Disabled for Cloud compatibility
+# faster-whisper # Disabled for Cloud compatibility
+# torch         # Installed as dependency of sentence-transformers

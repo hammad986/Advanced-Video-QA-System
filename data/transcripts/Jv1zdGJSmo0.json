@@ -1,0 +1,591 @@
+{
+  "video_name": "Jv1zdGJSmo0",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 116,
+  "total_duration": 466.79,
+  "word_count": 1315,
+  "full_transcript": "Is it worth becoming a data analyst in 2026? Especially with all the buzz around AI automation and changing job market? Is it worth investing your time, your money, and possibly even a master's degree in data analytics or business analytics? Or are you walking into an over-saturated field? Today, I'm breaking this down from every angle. The demand, the salary, the AI taking over data analysis job, the saturation reality, and the honest truth that nobody tells you. So stick around till the end because it's not what most people think. Before we get into data, I've been hiring manager for last six years in the tech industry in United States. In last month itself, we hired three analysts and I've reviewed hundreds of resume, I've set in the interview panel. I've seen who gets offers, I've seen who gets rejected. This is purely pattern recognition from the hiring site and I want to give you that perspective. So let's remove opinions that data influencers and media is putting on you and let's look at market and the real data. So here's the truth. Data analytics role in United States is expected to grow faster than average occupation in the next decade. And this is not me saying it's from US Bureau of Labor Statistics. You can look this up, I'll put the link in the description. And the median salary is going to be anywhere from 80,000 to 90,000 depending on your location and the experience. Most people end up starting around 60 to 80,000 if you're a fresher or an entry level. So yes, there is demand, there is money, there is opportunity, but here's the mistake that most people make. They assume the growth and the demand means easy entry. It's actually not. It means competition. The market is not shot on people who wants to become data analysts. It's actually shot on people who can create business impact based on their skills. You see data analytics has become a pickleball of corporate careers. What I mean by that, it has a low barrier to start so everyone is playing it. Mechanical engineer wants to become a data analyst, and a number of data analysts, commerce students, can switch into data analysts. And even someone who hates programming wants to become data analysts, why? Because internet influencers and media keeps telling you the same thing that all you need is SQL, Excel and Power BI. Now, you're me that probably worked five years ago and they are operating from that data point. It does not work now. Yes, you can learn the basic SQL, Excel, Python, Power BI dashboard, but that does not guarantee a data analyst job that only makes you eligible in this job market. It doesn't separate you out from the crowd. This is where most people get crushed. Usually I'm going to be extremely transparent when we hired three analysts last month, none of them were hired because they knew Power BI. Every single candidate who applied had Power BI in their resume, they demonstrated in their interview. That is just the baseline now. So, if you think that you know the basic skills that is required to be data analysts, I mean, then guess what? Thousands of other people also know the same thing. The difference in hiring came from something else. The candidate who stood out did three things differently. First, they understood business domain and context very clearly. They explained impact of their data analysis effectively. And the most important, they had strong communication skills. They were able to communicate confidently. Trust me, analyzing data is not your real job. Your real job is understanding what business cares about. I'm not identifying the trends that affects revenue, cost and retention. And ability to explain all of this to business leadership so that they can take action based on the data that you analyzed. And if you fail to do that, your failure job. If all you can do is build dashboards and clean data, guess what AI can do the same thing that you are able to do. And that is where the headline comes in that AI is going to replace data analyst for the people who do the basic data cleaning and reporting jobs into this job market. Businesses are not paying for dashboards and cleaning of the data. They're actually paying for outcomes. Here's how the job market is changing. AI is able to automate the basic reporting. Cloud platforms are becoming standard. Companies are expecting more automation. Hiring managers are seeing hundreds of applicants per role. In fact, when we were hiring for these three analysts last month, we got 6000 applicants within five days. So we had to stop accepting new applications. So if your plan is to learn tools and learn the basic skills and apply everywhere, guess what? You are entering the most crowded layer of job market. And this is where the frustration begins. I've actually spoken to 2230 data analysts who are working in top tech companies. And here's what they told me that's a three layer. Number one, the foundation. Strong SQL Python, Excel, Power BI, cleaning and transformation. Which you already know. And this is where most people ends up being stuck. Now comes the second layer, which is basic cloud familiarity, whether it's GCP, Azure or AWS, understanding how data appliance work and increasing productivity. Because of AI adoption. And finally, the top cream layer, one person, people are the ones who have business thinking, Storytelling skills and ability to solve problem, which is critical thinking and problem solving skills. Like I said, most people stop at layer one. They don't even think about layer two. And but this is where you can differentiate and become the top one person. Now, if you are someone who's pursuing masters in data analytics or business analytics, it's the reality. Your degree may give you some exposure to the job market, but it is not going to give you the positioning that you require. Data analytics is not a shortcut anymore. It's not a backup degree that is what ended up happening. Most people thought that because it doesn't have that much programming, everyone ended up becoming and choosing that degree. So if you are choosing this field, because you think it's an easier than software engineering, or if it's easier to enter into the tech market, you are entering this whole field with a wrong mindset. At this point, the data analytics field are rewarding people who have depth, not necessarily just the basic skills. I know I'm going to sound brutal and you may even not like this, but this is what you need to hear. But you know, here's another truth that you need to know. Most people don't fail because they lack skills. They fail because they lack positioning and system and strategy. This is exactly why I built my job hunting accelerator program. And that's where I will teach you how to position your resume, project storytelling, reference strategy, networking, interview prep, application, targeting, all of this with the lifetime access to me and the program. If you see it, then take a look at it. Link will be in the description. So finally, is data analytics worth it in 2026. The answer is yes, but only if you treat it like a real business profession. It's not a shortcut, it's not a backup degree. The market is already very, very, very, very crowded at the bottom. There is a too much supply, but it is not crowded at the top cream layer. So your goal should be to become that cream layer. If you commit to have deep knowledge, you will thrive. But if you stay average, you will feel like market is broken. And that's the hard truth.",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.5,
+      "text": "Is it worth becoming a data analyst in 2026?"
+    },
+    {
+      "start": 3.5,
+      "end": 9.5,
+      "text": "Especially with all the buzz around AI automation and changing job market?"
+    },
+    {
+      "start": 9.5,
+      "end": 17.0,
+      "text": "Is it worth investing your time, your money, and possibly even a master's degree in data analytics or business analytics?"
+    },
+    {
+      "start": 17.0,
+      "end": 21.0,
+      "text": "Or are you walking into an over-saturated field?"
+    },
+    {
+      "start": 21.0,
+      "end": 23.5,
+      "text": "Today, I'm breaking this down from every angle."
+    },
+    {
+      "start": 23.5,
+      "end": 32.5,
+      "text": "The demand, the salary, the AI taking over data analysis job, the saturation reality, and the honest truth that nobody tells you."
+    },
+    {
+      "start": 32.5,
+      "end": 36.5,
+      "text": "So stick around till the end because it's not what most people think."
+    },
+    {
+      "start": 36.5,
+      "end": 43.5,
+      "text": "Before we get into data, I've been hiring manager for last six years in the tech industry in United States."
+    },
+    {
+      "start": 43.5,
+      "end": 50.5,
+      "text": "In last month itself, we hired three analysts and I've reviewed hundreds of resume, I've set in the interview panel."
+    },
+    {
+      "start": 50.5,
+      "end": 53.5,
+      "text": "I've seen who gets offers, I've seen who gets rejected."
+    },
+    {
+      "start": 53.5,
+      "end": 58.5,
+      "text": "This is purely pattern recognition from the hiring site and I want to give you that perspective."
+    },
+    {
+      "start": 58.5,
+      "end": 67.5,
+      "text": "So let's remove opinions that data influencers and media is putting on you and let's look at market and the real data."
+    },
+    {
+      "start": 67.5,
+      "end": 68.5,
+      "text": "So here's the truth."
+    },
+    {
+      "start": 68.5,
+      "end": 76.5,
+      "text": "Data analytics role in United States is expected to grow faster than average occupation in the next decade."
+    },
+    {
+      "start": 76.5,
+      "end": 80.5,
+      "text": "And this is not me saying it's from US Bureau of Labor Statistics."
+    },
+    {
+      "start": 80.5,
+      "end": 82.5,
+      "text": "You can look this up, I'll put the link in the description."
+    },
+    {
+      "start": 82.5,
+      "end": 90.5,
+      "text": "And the median salary is going to be anywhere from 80,000 to 90,000 depending on your location and the experience."
+    },
+    {
+      "start": 90.5,
+      "end": 95.5,
+      "text": "Most people end up starting around 60 to 80,000 if you're a fresher or an entry level."
+    },
+    {
+      "start": 95.5,
+      "end": 101.5,
+      "text": "So yes, there is demand, there is money, there is opportunity, but here's the mistake that most people make."
+    },
+    {
+      "start": 101.5,
+      "end": 105.5,
+      "text": "They assume the growth and the demand means easy entry."
+    },
+    {
+      "start": 105.5,
+      "end": 107.5,
+      "text": "It's actually not."
+    },
+    {
+      "start": 107.5,
+      "end": 109.5,
+      "text": "It means competition."
+    },
+    {
+      "start": 109.5,
+      "end": 113.5,
+      "text": "The market is not shot on people who wants to become data analysts."
+    },
+    {
+      "start": 113.5,
+      "end": 118.5,
+      "text": "It's actually shot on people who can create business impact based on their skills."
+    },
+    {
+      "start": 118.5,
+      "end": 122.5,
+      "text": "You see data analytics has become a pickleball of corporate careers."
+    },
+    {
+      "start": 122.5,
+      "end": 126.5,
+      "text": "What I mean by that, it has a low barrier to start so everyone is playing it."
+    },
+    {
+      "start": 126.5,
+      "end": 128.5,
+      "text": "Mechanical engineer wants to become a data analyst,"
+    },
+    {
+      "start": 128.5,
+      "end": 131.5,
+      "text": "and a number of data analysts, commerce students, can switch into data analysts."
+    },
+    {
+      "start": 131.5,
+      "end": 135.5,
+      "text": "And even someone who hates programming wants to become data analysts, why?"
+    },
+    {
+      "start": 135.5,
+      "end": 142.5,
+      "text": "Because internet influencers and media keeps telling you the same thing that all you need is SQL, Excel and Power BI."
+    },
+    {
+      "start": 142.5,
+      "end": 148.5,
+      "text": "Now, you're me that probably worked five years ago and they are operating from that data point."
+    },
+    {
+      "start": 148.5,
+      "end": 150.5,
+      "text": "It does not work now."
+    },
+    {
+      "start": 150.5,
+      "end": 156.5,
+      "text": "Yes, you can learn the basic SQL, Excel, Python, Power BI dashboard,"
+    },
+    {
+      "start": 156.5,
+      "end": 163.5,
+      "text": "but that does not guarantee a data analyst job that only makes you eligible in this job market."
+    },
+    {
+      "start": 163.5,
+      "end": 166.5,
+      "text": "It doesn't separate you out from the crowd."
+    },
+    {
+      "start": 166.5,
+      "end": 169.5,
+      "text": "This is where most people get crushed."
+    },
+    {
+      "start": 169.5,
+      "end": 173.5,
+      "text": "Usually I'm going to be extremely transparent when we hired three analysts last month,"
+    },
+    {
+      "start": 173.5,
+      "end": 176.5,
+      "text": "none of them were hired because they knew Power BI."
+    },
+    {
+      "start": 176.5,
+      "end": 180.5,
+      "text": "Every single candidate who applied had Power BI in their resume,"
+    },
+    {
+      "start": 180.5,
+      "end": 182.5,
+      "text": "they demonstrated in their interview."
+    },
+    {
+      "start": 182.5,
+      "end": 184.5,
+      "text": "That is just the baseline now."
+    },
+    {
+      "start": 184.5,
+      "end": 189.5,
+      "text": "So, if you think that you know the basic skills that is required to be data analysts,"
+    },
+    {
+      "start": 189.5,
+      "end": 192.5,
+      "text": "I mean, then guess what?"
+    },
+    {
+      "start": 192.5,
+      "end": 194.5,
+      "text": "Thousands of other people also know the same thing."
+    },
+    {
+      "start": 194.5,
+      "end": 197.5,
+      "text": "The difference in hiring came from something else."
+    },
+    {
+      "start": 197.5,
+      "end": 200.5,
+      "text": "The candidate who stood out did three things differently."
+    },
+    {
+      "start": 200.5,
+      "end": 205.5,
+      "text": "First, they understood business domain and context very clearly."
+    },
+    {
+      "start": 205.5,
+      "end": 210.5,
+      "text": "They explained impact of their data analysis effectively."
+    },
+    {
+      "start": 210.5,
+      "end": 213.5,
+      "text": "And the most important, they had strong communication skills."
+    },
+    {
+      "start": 213.5,
+      "end": 216.5,
+      "text": "They were able to communicate confidently."
+    },
+    {
+      "start": 216.5,
+      "end": 219.5,
+      "text": "Trust me, analyzing data is not your real job."
+    },
+    {
+      "start": 219.5,
+      "end": 223.5,
+      "text": "Your real job is understanding what business cares about."
+    },
+    {
+      "start": 223.5,
+      "end": 227.5,
+      "text": "I'm not identifying the trends that affects revenue, cost and retention."
+    },
+    {
+      "start": 227.5,
+      "end": 235.5,
+      "text": "And ability to explain all of this to business leadership so that they can take action based on the data that you analyzed."
+    },
+    {
+      "start": 235.5,
+      "end": 237.5,
+      "text": "And if you fail to do that, your failure job."
+    },
+    {
+      "start": 237.5,
+      "end": 241.5,
+      "text": "If all you can do is build dashboards and clean data,"
+    },
+    {
+      "start": 241.5,
+      "end": 245.5,
+      "text": "guess what AI can do the same thing that you are able to do."
+    },
+    {
+      "start": 245.5,
+      "end": 256.5,
+      "text": "And that is where the headline comes in that AI is going to replace data analyst for the people who do the basic data cleaning and reporting jobs into this job market."
+    },
+    {
+      "start": 256.5,
+      "end": 260.5,
+      "text": "Businesses are not paying for dashboards and cleaning of the data."
+    },
+    {
+      "start": 260.5,
+      "end": 262.5,
+      "text": "They're actually paying for outcomes."
+    },
+    {
+      "start": 262.5,
+      "end": 265.5,
+      "text": "Here's how the job market is changing."
+    },
+    {
+      "start": 265.5,
+      "end": 268.5,
+      "text": "AI is able to automate the basic reporting."
+    },
+    {
+      "start": 268.5,
+      "end": 271.5,
+      "text": "Cloud platforms are becoming standard."
+    },
+    {
+      "start": 271.5,
+      "end": 273.5,
+      "text": "Companies are expecting more automation."
+    },
+    {
+      "start": 273.5,
+      "end": 277.5,
+      "text": "Hiring managers are seeing hundreds of applicants per role."
+    },
+    {
+      "start": 277.5,
+      "end": 283.5,
+      "text": "In fact, when we were hiring for these three analysts last month, we got 6000 applicants within five days."
+    },
+    {
+      "start": 283.5,
+      "end": 287.5,
+      "text": "So we had to stop accepting new applications."
+    },
+    {
+      "start": 287.5,
+      "end": 292.79,
+      "text": "So if your plan is to learn tools and learn the basic skills and apply everywhere, guess what?"
+    },
+    {
+      "start": 292.79,
+      "end": 296.79,
+      "text": "You are entering the most crowded layer of job market."
+    },
+    {
+      "start": 296.79,
+      "end": 299.79,
+      "text": "And this is where the frustration begins."
+    },
+    {
+      "start": 299.79,
+      "end": 304.79,
+      "text": "I've actually spoken to 2230 data analysts who are working in top tech companies."
+    },
+    {
+      "start": 304.79,
+      "end": 307.79,
+      "text": "And here's what they told me that's a three layer."
+    },
+    {
+      "start": 307.79,
+      "end": 309.79,
+      "text": "Number one, the foundation."
+    },
+    {
+      "start": 309.79,
+      "end": 314.79,
+      "text": "Strong SQL Python, Excel, Power BI, cleaning and transformation."
+    },
+    {
+      "start": 314.79,
+      "end": 316.79,
+      "text": "Which you already know."
+    },
+    {
+      "start": 316.79,
+      "end": 319.79,
+      "text": "And this is where most people ends up being stuck."
+    },
+    {
+      "start": 319.79,
+      "end": 323.79,
+      "text": "Now comes the second layer, which is basic cloud familiarity,"
+    },
+    {
+      "start": 323.79,
+      "end": 330.79,
+      "text": "whether it's GCP, Azure or AWS, understanding how data appliance work and increasing productivity."
+    },
+    {
+      "start": 330.79,
+      "end": 333.79,
+      "text": "Because of AI adoption."
+    },
+    {
+      "start": 333.79,
+      "end": 340.79,
+      "text": "And finally, the top cream layer, one person, people are the ones who have business thinking,"
+    },
+    {
+      "start": 340.79,
+      "end": 347.79,
+      "text": "Storytelling skills and ability to solve problem, which is critical thinking and problem solving skills."
+    },
+    {
+      "start": 347.79,
+      "end": 350.79,
+      "text": "Like I said, most people stop at layer one."
+    },
+    {
+      "start": 350.79,
+      "end": 352.79,
+      "text": "They don't even think about layer two."
+    },
+    {
+      "start": 352.79,
+      "end": 357.79,
+      "text": "And but this is where you can differentiate and become the top one person."
+    },
+    {
+      "start": 357.79,
+      "end": 362.79,
+      "text": "Now, if you are someone who's pursuing masters in data analytics or business analytics, it's the reality."
+    },
+    {
+      "start": 362.79,
+      "end": 366.79,
+      "text": "Your degree may give you some exposure to the job market,"
+    },
+    {
+      "start": 366.79,
+      "end": 370.79,
+      "text": "but it is not going to give you the positioning that you require."
+    },
+    {
+      "start": 370.79,
+      "end": 373.79,
+      "text": "Data analytics is not a shortcut anymore."
+    },
+    {
+      "start": 373.79,
+      "end": 376.79,
+      "text": "It's not a backup degree that is what ended up happening."
+    },
+    {
+      "start": 376.79,
+      "end": 380.79,
+      "text": "Most people thought that because it doesn't have that much programming,"
+    },
+    {
+      "start": 380.79,
+      "end": 383.79,
+      "text": "everyone ended up becoming and choosing that degree."
+    },
+    {
+      "start": 383.79,
+      "end": 389.79,
+      "text": "So if you are choosing this field, because you think it's an easier than software engineering,"
+    },
+    {
+      "start": 389.79,
+      "end": 392.79,
+      "text": "or if it's easier to enter into the tech market,"
+    },
+    {
+      "start": 392.79,
+      "end": 395.79,
+      "text": "you are entering this whole field with a wrong mindset."
+    },
+    {
+      "start": 395.79,
+      "end": 400.79,
+      "text": "At this point, the data analytics field are rewarding people who have depth,"
+    },
+    {
+      "start": 400.79,
+      "end": 402.79,
+      "text": "not necessarily just the basic skills."
+    },
+    {
+      "start": 402.79,
+      "end": 406.79,
+      "text": "I know I'm going to sound brutal and you may even not like this,"
+    },
+    {
+      "start": 406.79,
+      "end": 407.79,
+      "text": "but this is what you need to hear."
+    },
+    {
+      "start": 407.79,
+      "end": 410.79,
+      "text": "But you know, here's another truth that you need to know."
+    },
+    {
+      "start": 410.79,
+      "end": 413.79,
+      "text": "Most people don't fail because they lack skills."
+    },
+    {
+      "start": 413.79,
+      "end": 416.79,
+      "text": "They fail because they lack positioning and system and strategy."
+    },
+    {
+      "start": 416.79,
+      "end": 419.79,
+      "text": "This is exactly why I built my job hunting accelerator program."
+    },
+    {
+      "start": 419.79,
+      "end": 422.79,
+      "text": "And that's where I will teach you how to position your resume,"
+    },
+    {
+      "start": 422.79,
+      "end": 427.79,
+      "text": "project storytelling, reference strategy, networking, interview prep, application,"
+    },
+    {
+      "start": 427.79,
+      "end": 430.79,
+      "text": "targeting, all of this with the lifetime access to me and the program."
+    },
+    {
+      "start": 430.79,
+      "end": 432.79,
+      "text": "If you see it, then take a look at it."
+    },
+    {
+      "start": 432.79,
+      "end": 434.79,
+      "text": "Link will be in the description."
+    },
+    {
+      "start": 434.79,
+      "end": 438.79,
+      "text": "So finally, is data analytics worth it in 2026."
+    },
+    {
+      "start": 438.79,
+      "end": 443.79,
+      "text": "The answer is yes, but only if you treat it like a real business profession."
+    },
+    {
+      "start": 443.79,
+      "end": 445.79,
+      "text": "It's not a shortcut, it's not a backup degree."
+    },
+    {
+      "start": 445.79,
+      "end": 449.79,
+      "text": "The market is already very, very, very, very crowded at the bottom."
+    },
+    {
+      "start": 449.79,
+      "end": 454.79,
+      "text": "There is a too much supply, but it is not crowded at the top cream layer."
+    },
+    {
+      "start": 454.79,
+      "end": 457.79,
+      "text": "So your goal should be to become that cream layer."
+    },
+    {
+      "start": 457.79,
+      "end": 461.79,
+      "text": "If you commit to have deep knowledge, you will thrive."
+    },
+    {
+      "start": 461.79,
+      "end": 464.79,
+      "text": "But if you stay average, you will feel like market is broken."
+    },
+    {
+      "start": 464.79,
+      "end": 466.79,
+      "text": "And that's the hard truth."
+    }
+  ]
+}

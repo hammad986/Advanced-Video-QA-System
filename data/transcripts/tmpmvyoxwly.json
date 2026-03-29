@@ -1,0 +1,201 @@
+{
+  "video_name": "tmpmvyoxwly",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 38,
+  "total_duration": 184.85,
+  "word_count": 447,
+  "full_transcript": "The choice of features can have a huge impact on your learning algorithms performance. In fact, for many practical applications, choosing or entering the right features is a critical step to making the algorithm work well. In this video, let's take a look at how you can choose or engineer the most appropriate features for your learning algorithm. Let's take a look at feature engineering by revisiting the example of predicting the price of a house. Say you have two features for each house. X1 is the width of the lot size of the plot of land at the house's built-on. depth of the lot size. Of this assume the rectangular plot of land that a house was built on. Given these two features, X1 and X2, you might build a model like this, where f of X is W1 X1 plus W1 X2 plus B, where X1 is the frontage of the whole width and X2 is the depth. And this model might work okay. way to use these features in the model that could be even more effective. You might notice that the area of the land can be calculated as the front-titch or with times the depth. And you may have an intuition that the area of the land is more predictive of the price, than the front-titch and depth as separate features. So you might define a new feature x3 as x1 times x2. So... With this feature, you can then have a model, FWP of X, equals W1, X1, plus W2, X2, plus W3, X3, plus B. So that the model can now choose parameters W1, W2, and W3, depending on whether the data shows it the front-ish or the death, or the area X3 of the plot turns out to the most important thing. for predicting the price of the house. What we just did, creating a new feature, is an example of what's called feature engineering, in which you might use your knowledge or intuition about the problem to design new features, usually by transforming or combining the original features of the problem in order to make it easier for the learning algorithm to make accurate predictions. So depending on what insights you may have into the application, rather than just taking the features that you happen. start off with, sometimes by defining your features, you might be able to get a much better model. So that's future engineering. And it turns out that there's one flavor of feature engineering that allow you to fit not just three lines, but curves, non-linear functions to your data. Let's take a look in the next video at how you can do that.",
+  "segments": [
+    {
+      "start": 1.39,
+      "end": 6.13,
+      "text": "The choice of features can have a huge impact on your learning algorithms performance."
+    },
+    {
+      "start": 6.13,
+      "end": 13.89,
+      "text": "In fact, for many practical applications, choosing or entering the right features is a critical step to making the algorithm work well."
+    },
+    {
+      "start": 13.89,
+      "end": 20.89,
+      "text": "In this video, let's take a look at how you can choose or engineer the most appropriate features for your learning algorithm."
+    },
+    {
+      "start": 20.89,
+      "end": 27.49,
+      "text": "Let's take a look at feature engineering by revisiting the example of predicting the price of a house."
+    },
+    {
+      "start": 27.49,
+      "end": 31.06,
+      "text": "Say you have two features for each house."
+    },
+    {
+      "start": 31.06,
+      "end": 37.06,
+      "text": "X1 is the width of the lot size of the plot of land at the house's built-on."
+    },
+    {
+      "start": 45.230000000000004,
+      "end": 51.71,
+      "text": "depth of the lot size. Of this assume the rectangular plot of land that a house was built on."
+    },
+    {
+      "start": 51.71,
+      "end": 59.95,
+      "text": "Given these two features, X1 and X2, you might build a model like this, where f of X is W1 X1 plus W1"
+    },
+    {
+      "start": 60.11,
+      "end": 66.83,
+      "text": "X2 plus B, where X1 is the frontage of the whole width and X2 is the depth."
+    },
+    {
+      "start": 67.81,
+      "end": 71.72999999999999,
+      "text": "And this model might work okay."
+    },
+    {
+      "start": 73.26,
+      "end": 77.3,
+      "text": "way to use these features in the model that could be even more effective."
+    },
+    {
+      "start": 77.3,
+      "end": 82.58,
+      "text": "You might notice that the area of the land can be calculated as the front-titch or with"
+    },
+    {
+      "start": 82.58,
+      "end": 84.58,
+      "text": "times the depth."
+    },
+    {
+      "start": 84.58,
+      "end": 90.5,
+      "text": "And you may have an intuition that the area of the land is more predictive of the price,"
+    },
+    {
+      "start": 90.5,
+      "end": 94.14,
+      "text": "than the front-titch and depth as separate features."
+    },
+    {
+      "start": 94.14,
+      "end": 99.9,
+      "text": "So you might define a new feature x3 as x1 times x2."
+    },
+    {
+      "start": 99.9,
+      "end": 100.14,
+      "text": "So..."
+    },
+    {
+      "start": 104.69,
+      "end": 108.15,
+      "text": "With this feature, you can then have a model,"
+    },
+    {
+      "start": 108.15,
+      "end": 116.03,
+      "text": "FWP of X, equals W1, X1, plus W2, X2, plus W3, X3, plus B."
+    },
+    {
+      "start": 116.43,
+      "end": 121.28999999999999,
+      "text": "So that the model can now choose parameters W1, W2, and W3,"
+    },
+    {
+      "start": 121.28999999999999,
+      "end": 125.03,
+      "text": "depending on whether the data shows it the front-ish or the death,"
+    },
+    {
+      "start": 125.03,
+      "end": 130.03,
+      "text": "or the area X3 of the plot turns out to the most important thing."
+    },
+    {
+      "start": 130.16,
+      "end": 132.9,
+      "text": "for predicting the price of the house."
+    },
+    {
+      "start": 132.9,
+      "end": 135.62,
+      "text": "What we just did, creating a new feature,"
+    },
+    {
+      "start": 135.62,
+      "end": 139.46,
+      "text": "is an example of what's called feature engineering,"
+    },
+    {
+      "start": 139.46,
+      "end": 141.22,
+      "text": "in which you might use your knowledge"
+    },
+    {
+      "start": 141.22,
+      "end": 144.7,
+      "text": "or intuition about the problem to design new features,"
+    },
+    {
+      "start": 144.7,
+      "end": 146.9,
+      "text": "usually by transforming or combining"
+    },
+    {
+      "start": 146.9,
+      "end": 148.98,
+      "text": "the original features of the problem"
+    },
+    {
+      "start": 148.98,
+      "end": 151.3,
+      "text": "in order to make it easier for the learning"
+    },
+    {
+      "start": 151.3,
+      "end": 153.7,
+      "text": "algorithm to make accurate predictions."
+    },
+    {
+      "start": 153.7,
+      "end": 155.94,
+      "text": "So depending on what insights you may have"
+    },
+    {
+      "start": 155.94,
+      "end": 159.3,
+      "text": "into the application, rather than just taking the features"
+    },
+    {
+      "start": 159.3,
+      "end": 160.46,
+      "text": "that you happen."
+    },
+    {
+      "start": 160.0,
+      "end": 166.72,
+      "text": "start off with, sometimes by defining your features, you might be able to get a much better model."
+    },
+    {
+      "start": 167.52,
+      "end": 174.29,
+      "text": "So that's future engineering. And it turns out that there's one flavor of feature engineering that"
+    },
+    {
+      "start": 174.29,
+      "end": 180.21,
+      "text": "allow you to fit not just three lines, but curves, non-linear functions to your data."
+    },
+    {
+      "start": 180.21,
+      "end": 184.85,
+      "text": "Let's take a look in the next video at how you can do that."
+    }
+  ]
+}

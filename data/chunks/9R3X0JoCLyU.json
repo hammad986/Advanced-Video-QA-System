@@ -1,0 +1,42 @@
+{
+  "video_id": "9R3X0JoCLyU",
+  "total_chunks": 4,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "9R3X0JoCLyU",
+      "start": 0.0,
+      "end": 92.96,
+      "duration": 92.96,
+      "word_count": 294,
+      "text": "If you want to become a data scientist, there are nine essential skills you need to master. Let's dive in and check them out one by one. Data science is all about analyzing and interpreting complex data to provide actionable insights. As a data scientist, you'll need to get good at a bunch of different skills from programming and math to data handling and visualization. Let's jump in. First up, you need to get the hang of Python. It's the main language in data science and it's pretty easy to pick up. You can get a decent grasp of it in about a month or two. Then there is R. It's another popular language in data science. Start with Python because it's super versatile and once you're comfortable with it, you can dive into R for its cool, statistical and visualization features. Next, you need to learn Git. Git is an programming language. It's a version control system we use to track changes to our code and collaborate with others. Git has a ton of features, but you don't need to learn them all. Think of it like the 80-20 rule. 80% of the time, you use 20% of Git's features. One to two weeks of practice is enough to get up and running. Next, you need to dive into data structures and algorithms. Understanding these concepts will boost your problem-solving skills, which is key for tackling complex challenges. Plus, speak to companies like Google, Amazon, and Facebook always ask about them in job interviews. Spend about a month or two on this and you'll be in great shape. Next, you need to get comfortable with SQL. SQL stands for structured query language. It's a very simple language we use for working with databases."
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "9R3X0JoCLyU",
+      "start": 92.96,
+      "end": 190.72,
+      "duration": 97.76,
+      "word_count": 290,
+      "text": "As a data scientist, you should know how to use SQL to access, organize, and analyze the data you need. SQL is pretty simple and you can get a decent grasp of it in about a month or two. By the way, to help you on this journey, I've created a free supplementary PDF that breaks down the specific concepts you need to learn for each skill. It's a great resource to review your progress, find gaps here in knowledge, and prepare for interviews. You can find the link in the description box. Also, I have a bunch of tutorials on this channel and complete courses on my website if you're looking for a structured learning. Again, links are in the description box. Next, you need a solid foundation in mathematics and statistics. This is crucial because data science relies heavily on these principles. Focus on linear algebra, calculus, probability, and statistics. These will help you understand data analysis techniques and how to interpret data correctly. Spend about two to three months mastering these topics. After that, you need to get good at preparing and visualizing data. This means cleaning up the data and organizing it in a way that makes it easy to analyze. You'll need to learn Python libraries like pandas and non-py to manipulate and clean the data. Once your data is clean, you need to visualize it to understand patterns and communicate results. Libraries like MAT, PLOT, LIP and C-borne help you create insightful visualizations to identify, trans and anomalies. Also, why not strictly necessary? Getting familiar with business intelligence tools like Tableau or Power BI can give you an edge, because these tools are widely used in the industry for creating interactive and shareable dashboards."
+    },
+    {
+      "chunk_id": 2,
+      "video_id": "9R3X0JoCLyU",
+      "start": 190.72,
+      "end": 295.12,
+      "duration": 104.4,
+      "word_count": 298,
+      "text": "If you already have a solid background in Python and SQL, you can get a good grasp of data pre-processing and visualization in a month or two. Next up, you'll need to get a handle on machine learning fundamentals. Machine learning algorithms fall into two categories, supervised and unsupervised. In supervised learning, the model learns from label data, meaning each input comes with a known output. In unsupervised learning, the model works with unlabeled data and tries to figure out patterns and relationships on its own. It's important to learn about these types of algorithms and how they work. You'll also need to get familiar with tools like TensorFlow, PyTorch and Psychid Learn, which are used to build and train machine learning models. Dedicated about three to four months to master the core machine learning concept and how to use these tools effectively. After you've got the basics of machine learning down, it's time to explore deep learning. Deep learning is a subset of machine learning that uses neural networks with many layers. That's why we call it deep. These networks are great for handling more complex tasks. Like image and speech recognition. Start with understanding the basics of neural networks and then move on to more advanced architectures, like CNN's and RNN's. Tools like TensorFlow and PyTorch are also essential here. Span about two to three months getting a good grasp of deep learning concept and how to implement them. Alright, at this point, we've got a solid foundation in data science. It's like you have become a general doctor. Now, doctors often specialize in different areas like the hard or kidnys. Similarly, you should consider specializing in exciting fields like natural language processing, also called NLP or computer vision. NLP is all about working with text"
+    },
+    {
+      "chunk_id": 3,
+      "video_id": "9R3X0JoCLyU",
+      "start": 295.12,
+      "end": 370.72,
+      "duration": 75.6,
+      "word_count": 251,
+      "text": "and language data. It's used for things like analyzing sentiments in text, translating languages, and creating chatbot like chatGPT. Computer vision on the other hand is about teaching computers to understand and interpret visual data like images and videos. It's used in facial recognition, detecting objects and even in self-driving cars. Now, you don't need to learn on both, unless you're very enthusiastic. So pick the one that interests you the most. Span 2 to 3 months diving deep into one of these areas. Now, as you move forward in your data science path, there might come a time when you need to work with massive data sets. That's where big data comes in. Big data is all about handling and processing huge amounts of data quickly. Tools like Hadoop and Spark are super handy for this. Span 2 to 3 months, getting the hang of these tools and you'll be able to spot patterns and trends that you wouldn't catch with smaller data sets. So if you dedicate 3 to 5 hours every day, you can follow this roadmap and pick up all the skills you need to apply for an entry level data science job in about 12 to 20 months. If you have any questions, please let me know in the comments below and I will do my best to answer you right here or in my future videos. If you enjoyed this video, please give it a like and subscribe for more useful content. Thanks for watching."
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "video_name": "05_index",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 36,
+  "total_duration": 218.71,
+  "word_count": 488,
+  "full_transcript": "In the last video, you saw what is unsupervised learning and one type of unsupervised learning called clustering. Let's give a slightly more formal definition of unsupervised learning and take a quick look at some other types of unsupervised learning other than clustering. Whereas in supervised learning, the data comes with both inputs x and output labels y in unsupervised learning, the data comes only with inputs x but not output labels y and the algorithm has to find some structure or some pattern or something interesting in the data. which groups similar data points together. In this specialization, you learn about clustering, as well as two other types of unsupervised learning. One is called anomaly detection, which is used to detect unusual events. This turns out to be really important for fraud detection in the financial system where unusual events unusual transactions could be a size of fraud. And you also learn about dimensionality reduction. This lets you take a big dataset and almost magically compress it to a much smaller dataset while losing as little information as possible. In case the non-medit detection and dimensionality reduction don't seem to make too much sense to you yet, don't worry about it. We'll get to this later in this specialization. Now I'd like to ask you another question. check your understanding. And no pressure if you don't get it right on the first try is totally fine. Please select any of the following that you think are examples of unsupervised learning. Two are unsupervised examples and two are supervised learning examples. So please take a look. Maybe you remember the span filtering problem. If you have labeled data, you know labeled S. the new story example, that's exactly the Google news and hand-to-example that you saw in the last video. And so you can approach that using a clustering algorithm to group news articles together, so that would use unsupervised learning. The Marcus segmentation example that I talked about the open earlier, you can do that as an unsupervised learning problem. your algorithm some data and ask it to discover Marcus segments automatically. And the final example on diagnosing diabetes, well actually that's a lot like our breast cancer example from the supervised learning videos. Only instead of denying or malignant tumours, we instead have diabetes or not diabetes. And so you can approach this as a supervised learning problem just like we did for the breast tumor classification. Even though in this in the last video, with tough mainly about clustering, in later videos in the specialization will dive much more deeply into a normally detection and dimensionality reduction as well. So that's unsupervised learning. Before we wrap up this section, I want to share a view of something that I find really exciting and useful, which is the use of juket and notebooks in machine learning. Let's take a look at that in the next video.",
+  "segments": [
+    {
+      "start": 1.1,
+      "end": 8.1,
+      "text": "In the last video, you saw what is unsupervised learning and one type of unsupervised learning called clustering."
+    },
+    {
+      "start": 8.1,
+      "end": 17.6,
+      "text": "Let's give a slightly more formal definition of unsupervised learning and take a quick look at some other types of unsupervised learning other than clustering."
+    },
+    {
+      "start": 17.6,
+      "end": 25.1,
+      "text": "Whereas in supervised learning, the data comes with both inputs x and output labels y in unsupervised learning,"
+    },
+    {
+      "start": 25.6,
+      "end": 36.1,
+      "text": "the data comes only with inputs x but not output labels y and the algorithm has to find some structure or some pattern or something interesting in the data."
+    },
+    {
+      "start": 43.230000000000004,
+      "end": 49.71,
+      "text": "which groups similar data points together. In this specialization, you learn about clustering,"
+    },
+    {
+      "start": 49.71,
+      "end": 56.59,
+      "text": "as well as two other types of unsupervised learning. One is called anomaly detection,"
+    },
+    {
+      "start": 56.67,
+      "end": 63.79,
+      "text": "which is used to detect unusual events. This turns out to be really important for fraud detection"
+    },
+    {
+      "start": 63.79,
+      "end": 69.95,
+      "text": "in the financial system where unusual events unusual transactions could be a size of fraud."
+    },
+    {
+      "start": 73.18,
+      "end": 81.1,
+      "text": "And you also learn about dimensionality reduction. This lets you take a big dataset and almost magically"
+    },
+    {
+      "start": 81.1,
+      "end": 86.53999999999999,
+      "text": "compress it to a much smaller dataset while losing as little information as possible."
+    },
+    {
+      "start": 87.1,
+      "end": 92.3,
+      "text": "In case the non-medit detection and dimensionality reduction don't seem to make too much sense"
+    },
+    {
+      "start": 92.3,
+      "end": 96.62,
+      "text": "to you yet, don't worry about it. We'll get to this later in this specialization."
+    },
+    {
+      "start": 97.25999999999999,
+      "end": 101.1,
+      "text": "Now I'd like to ask you another question."
+    },
+    {
+      "start": 101.28,
+      "end": 107.12,
+      "text": "check your understanding. And no pressure if you don't get it right on the first try is totally fine."
+    },
+    {
+      "start": 107.87,
+      "end": 113.78999999999999,
+      "text": "Please select any of the following that you think are examples of unsupervised learning."
+    },
+    {
+      "start": 114.35,
+      "end": 120.51,
+      "text": "Two are unsupervised examples and two are supervised learning examples. So please take a look."
+    },
+    {
+      "start": 123.84,
+      "end": 129.92000000000002,
+      "text": "Maybe you remember the span filtering problem. If you have labeled data, you know labeled S."
+    },
+    {
+      "start": 136.56,
+      "end": 142.24,
+      "text": "the new story example, that's exactly the Google news and hand-to-example that you saw in the"
+    },
+    {
+      "start": 142.24,
+      "end": 149.44,
+      "text": "last video. And so you can approach that using a clustering algorithm to group news articles together,"
+    },
+    {
+      "start": 149.52,
+      "end": 155.74,
+      "text": "so that would use unsupervised learning. The Marcus segmentation example that I talked about the"
+    },
+    {
+      "start": 155.74,
+      "end": 161.98,
+      "text": "open earlier, you can do that as an unsupervised learning problem."
+    },
+    {
+      "start": 161.79,
+      "end": 169.39,
+      "text": "your algorithm some data and ask it to discover Marcus segments automatically. And the final example"
+    },
+    {
+      "start": 169.39,
+      "end": 176.43,
+      "text": "on diagnosing diabetes, well actually that's a lot like our breast cancer example from the supervised"
+    },
+    {
+      "start": 176.43,
+      "end": 182.91,
+      "text": "learning videos. Only instead of denying or malignant tumours, we instead have diabetes or not"
+    },
+    {
+      "start": 182.91,
+      "end": 188.27,
+      "text": "diabetes. And so you can approach this as a supervised learning problem just like we did for the"
+    },
+    {
+      "start": 188.27,
+      "end": 191.63,
+      "text": "breast tumor classification."
+    },
+    {
+      "start": 191.54,
+      "end": 194.26,
+      "text": "Even though in this in the last video,"
+    },
+    {
+      "start": 194.26,
+      "end": 196.74,
+      "text": "with tough mainly about clustering,"
+    },
+    {
+      "start": 196.74,
+      "end": 198.98,
+      "text": "in later videos in the specialization"
+    },
+    {
+      "start": 198.98,
+      "end": 201.9,
+      "text": "will dive much more deeply into a normally detection"
+    },
+    {
+      "start": 201.9,
+      "end": 205.63,
+      "text": "and dimensionality reduction as well."
+    },
+    {
+      "start": 205.63,
+      "end": 208.19,
+      "text": "So that's unsupervised learning."
+    },
+    {
+      "start": 208.19,
+      "end": 209.67000000000002,
+      "text": "Before we wrap up this section,"
+    },
+    {
+      "start": 209.67000000000002,
+      "end": 213.03,
+      "text": "I want to share a view of something that I find really exciting and useful,"
+    },
+    {
+      "start": 213.03,
+      "end": 216.63,
+      "text": "which is the use of juket and notebooks in machine learning."
+    },
+    {
+      "start": 216.63,
+      "end": 218.71,
+      "text": "Let's take a look at that in the next video."
+    }
+  ]
+}

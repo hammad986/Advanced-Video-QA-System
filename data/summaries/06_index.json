@@ -1,0 +1,11 @@
+{
+  "video_id": "06_index",
+  "bullets": [
+    "• Supervised learning involves training a model with labeled data to predict outcomes.",
+    "• Linear regression is a type of supervised learning used to predict numerical outputs.",
+    "• A training set consists of input (features) and output (target) variables for model training.",
+    "• Notation for data includes lowercase x for inputs and y for outputs, with superscripts to denote specific examples.",
+    "• The process of predicting a client's house price involves training a model on a dataset and using it to make predictions."
+  ],
+  "raw": "• Supervised learning involves training a model with labeled data to predict outcomes.\n• Linear regression is a type of supervised learning used to predict numerical outputs.\n• A training set consists of input (features) and output (target) variables for model training.\n• Notation for data includes lowercase x for inputs and y for outputs, with superscripts to denote specific examples.\n• The process of predicting a client's house price involves training a model on a dataset and using it to make predictions.\nTimestamp: None"
+}

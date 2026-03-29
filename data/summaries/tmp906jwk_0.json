@@ -1,0 +1,11 @@
+{
+  "video_id": "tmp906jwk_0",
+  "bullets": [
+    "• The choice of features significantly impacts learning algorithm performance.",
+    "• Feature engineering involves creating new features from existing ones to improve model accuracy.",
+    "• Combining features, like calculating land area from width and depth, can make features more predictive.",
+    "• Feature engineering uses problem-specific knowledge to transform or combine original features.",
+    "• One type of feature engineering can fit non-linear functions to data, enhancing model flexibility."
+  ],
+  "raw": "• The choice of features significantly impacts learning algorithm performance.\n• Feature engineering involves creating new features from existing ones to improve model accuracy.\n• Combining features, like calculating land area from width and depth, can make features more predictive.\n• Feature engineering uses problem-specific knowledge to transform or combine original features.\n• One type of feature engineering can fit non-linear functions to data, enhancing model flexibility.\nTimestamp: None"
+}

@@ -1,0 +1,42 @@
+{
+  "video_id": "tmp3yvdiux1",
+  "total_chunks": 4,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "tmp3yvdiux1",
+      "start": 3.66,
+      "end": 108.94,
+      "duration": 105.28,
+      "word_count": 290,
+      "text": "So far, we've just been fitting straight lines to our data. Let's take the ideas of multiple linear regression and feet engineering to come up with a new algorithm called the NOMI or regression which will let you fit curves, non-linear functions, geodata. Let's say you have a whole Z-V data set that looks like this, where feature X is the size in square feet. It doesn't look like a straight line fits this data set very well. So maybe you want to fill a curve, maybe a quadratic function to the data like this, which includes a size X and also x squared which decides race to the power of 2, and maybe that'll give you a better fit to the data. But then you may decide that your quadratic model doesn't really make sense because a quadratic function eventually comes back down and well we wouldn't really expect housing prices to go down when the size increases, right? Big houses seem like they should usually cost more. So then you may choose a cubic function where we now have not only x squared but x cubed. So maybe this model produces this curve here which is a somewhat better fit to the data because the size does eventually come back up as the size increases. These are both examples of polynomial regression because you took your optional feature X and raised it to the power of 2 or 3 or any other power. Then in the case of the cubic function the first feature is the size, the second feature is the size squared and the third feature is the size cubed. I just want to point out one more thing which is that if you create features"
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "tmp3yvdiux1",
+      "start": 108.94,
+      "end": 221.56,
+      "duration": 112.62,
+      "word_count": 299,
+      "text": "that are these powers like the square of the original features like this then feature scaling becomes increasingly important. So if the size of the house ranges from say 1 to 1,000 square feet then the second feature which is the size squared will range from 1 to a million and the third feature which is size cubed ranges from 1 to a billion. So these two features, x squared and x cubed, take on very different ranges of values compared to the original feature X and if you're using great and decent, is important to apply feature scaling to get your features into comparable ranges of values. Finally, just one last example of how you really have a wide range of choices of features to use. Another reasonable alternative to taking the size squared and size cubed is to say use the square root of x. So your model may look like w1 times x plus w2 times the square root of x plus b. The square root function looks like this and it becomes a bit less steep as x increases but it doesn't ever completely fatten out and it certainly never ever comes back down. So this would be another choice of features that might work well for this data set as well. So you may ask yourself, how do I decide what features to use? Later in the second course in the specialization, you see how you can choose different features and different models that include ordonic group these features and you have a process for measuring how well these different models perform to help you decide which features include or not include. But now I just want you to be aware that you have a choice in what features you use and by using"
+    },
+    {
+      "chunk_id": 2,
+      "video_id": "tmp3yvdiux1",
+      "start": 221.56,
+      "end": 331.49,
+      "duration": 109.93,
+      "word_count": 300,
+      "text": "your feature engineering and polynomial functions, you can potentially get a much better model for your data. In the optional lab that follows this video, you will see some code that implements polynomial regression using features like x, x, x, x, x, x, and x cubed. So please take a look and run the code and see how it works. There's also another optional lab after that one that shows how to use a popular open source toolkit that implements linear regression. Second learn is a very widely used open source machine learning library that is used by many practitioners in many of the top AI, internet, machine learning companies in the world. So if either now or in the future you're using machine learning in your job, there's a very good chance you'll be using tools like cycle learning to train your models. And so working through that optional lab will give you a chance to not only better understand linear regression but also see how this can be done in just a few lines of code using a library like cycle learning. For you to have a solid understanding of these algorithms and be able to apply them, I do think it's important that you know how to implement linear regression yourself and not just call some cycle learning function that is a black box. But cycle learning also has an important role in the way machine learning is done in practice today. So, we're just about at the end of this week. Congratulations on finishing all of this week's videos. Please do take a look at the practice quizzes and also the practice lab which I hope will let you try out and practice ideas that we've discussed. In this week's practice lab you implement linear regression."
+    },
+    {
+      "chunk_id": 3,
+      "video_id": "tmp3yvdiux1",
+      "start": 331.49,
+      "end": 350.84,
+      "duration": 19.35,
+      "word_count": 58,
+      "text": "I hope you have a lot of fun getting this learning algorithm to work for yourself. Best of luck with that and I also look forward to seeing you in next week's videos where we'll go beyond regression that is predicting numbers to talk about our first classification algorithm which can predict categories. I'll see you next week."
+    }
+  ]
+}

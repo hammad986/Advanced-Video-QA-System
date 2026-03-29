@@ -1,0 +1,130 @@
+# Video-QA System Configuration
+# Research-Level RAG Pipeline Settings
+
+# ============================================
+# VIDEO PROCESSING
+# ============================================
+video:
+  input_dir: "data/videos"
+  output_dir: "data/audio"
+  supported_formats:
+    - ".mp4"
+    - ".mkv"
+    - ".avi"
+    - ".mov"
+    - ".webm"
+    - ".m4a"
+    - ".mp3"
+    - ".wav"
+  audio_settings:
+    sample_rate: 16000
+    channels: 1  # mono
+    codec: "pcm_s16le"
+
+# ============================================
+# SPEECH RECOGNITION (WHISPERX)
+# ============================================
+speech:
+  model_size: "tiny"   # tiny=88MB, small=470MB, medium=1.5GB — use tiny to avoid OOM
+  device: "cpu"
+  compute_type: "int8"
+  beam_size: 1
+  best_of: 1
+  temperature: 0
+  # WhisperX settings
+  use_whisperx: false  # disabled — requires lot of RAM
+  alignment: false
+  vad_filter: true
+  vad_min_silence_ms: 700
+  # Punctuation restoration
+  restore_punctuation: false  # disabled — saves memory
+  # LLM correction pass (requires Ollama - disabled by default)
+  llm_correction: false
+
+# ============================================
+# KNOWLEDGE STRUCTURING (SEMANTIC CHUNKING)
+# ============================================
+chunking:
+  method: "semantic"  # semantic or fixed
+  # Semantic chunking settings
+  semantic:
+    embedding_model: "BAAI/bge-small-en"  # faster semantic chunking
+    similarity_threshold: 0.3  # if similarity drops below this, start new chunk
+    min_chunk_words: 50
+    max_chunk_words: 300
+  # Fixed chunking (fallback)
+  fixed:
+    chunk_size_words: 150
+    overlap_words: 40
+
+# ============================================
+# EMBEDDINGS (BGE/E5)
+# ============================================
+embeddings:
+  # Use lighter embedding model that fits in memory on CPU-only machines
+  model_name: "BAAI/bge-small-en"  # 512-dim, fast on CPU, strong retrieval quality
+  normalize: true
+  batch_size: 32
+  device: "cpu"
+
+# ============================================
+# RETRIEVAL
+# ============================================
+retrieval:
+  vector_db: "faiss"  # faiss or chroma
+  top_k: 5            # Retrieve top-5 segments
+  min_score: 0.0      # No threshold — return all results, let QA model judge quality
+  index_path: "models/video_index.faiss"
+  metadata_path: "models/metadata.pkl"
+
+# ============================================
+# RE-RANKING
+# ============================================
+reranking:
+  enabled: false  # disabled: bge-reranker-large is too large for CPU-only machines
+  model_name: "BAAI/bge-reranker-base"
+  top_k: 5
+  device: "cpu"
+
+# ============================================
+# ANSWER GENERATION (LOCAL ONLY)
+# ============================================
+answer:
+  # Single-call local LLM via Ollama
+  use_local: true
+  local_model: "phi3:mini"
+  ollama_url: "http://localhost:11434/api/generate"
+  timeout: 180
+  max_tokens: 256      # reduced from 512 for faster response
+
+  # Prompt settings
+  strict_mode: false
+  extractive: false
+
+# ============================================
+# EVIDENCE VERIFICATION
+# ============================================
+verification:
+  enabled: true
+  # Local NLI model for offline verification (preferred)
+  nli_model: "facebook/bart-large-mnli"
+  # Ollama LLM fallback (optional – only used if NLI model is unavailable)
+  local_model: "phi3:mini"
+  ollama_url: "http://localhost:11434/api/generate"
+  timeout: 120
+
+# ============================================
+# OUTPUT
+# ============================================
+output:
+  format: "structured"  # structured or simple
+  include_citations: true
+  include_timestamps: true
+
+# ============================================
+# LOGGING
+# ============================================
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "video_qa.log"

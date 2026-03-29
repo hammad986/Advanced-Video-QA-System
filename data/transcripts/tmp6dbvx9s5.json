@@ -1,0 +1,326 @@
+{
+  "video_name": "tmp6dbvx9s5",
+  "language": "en",
+  "language_confidence": 1.0,
+  "total_segments": 63,
+  "total_duration": 394.42,
+  "word_count": 944,
+  "full_transcript": "So, welcome back. Let's take a look at some techniques that make great-dint-descent work much better. In this video, you see a technique called feature scaling that will enable great-dint-descent to run much faster. Let's start by taking a look at the relationship between the size of a feature that is how big are the numbers for that feature and the size of a associated parameter. As a concrete example, let's predict the price of a hulls using two features, X1, the size of the hulls and X2, the number of bedrooms. Let's say that X1 typically ranges from 300 to 2000 square feet and X2 in the days of set ranges from 0 to 5 bedrooms. So, for this example, X1 takes on the relatively large range of values and X2 takes on the relatively small range of values. Now, let's take an example of a hulls that has a size of 2000 square feet, has five bedrooms, and a price of 500k or 500k dollars. For this one training example, what do you think are reasonable values for the size of parameters, W1 and W2? Well, let's look at one possible set of parameters. Say, W1 is 50, and W2 is 0.1, and B is 50 for the purposes of discussion. So, in this case, the estimated price in thousands of dollars is 100,000k here plus 0.5k plus 50k, which is slightly over 100 million dollars. So, that's clearly very far from the actual price of 500,000 dollars. And so, this is not a very good set of parameters for W1 and W2. Now, let's take a look at another possibility. Say, W1 and W2 were the other way around. W1 is 0.1, and W2 is 50, and B is still also 50. In this choice of W1 and W2, W1 is relatively small, and W2 is relatively large, 50 is much bigger than 0.1. So, here, the predicted price is 0.1 times 2000 plus 50 times 5 plus 50. The first term becomes 200k, the second term becomes 250k, and then plus 50. So, this version of the model predicts a price of 500,000 dollars, which is a much more reasonable estimate, and it happens to be the same price as the true price of the house. So, hopefully, you might notice that when a possible range of values of a feature is large, like the size and square feet, which goes all the way up to 2000, it's more likely that a good model will learn to choose a relatively small, RAM to value, like 0.1. Likewise, when the possible values of a feature are small, like the number of bedrooms, then a reasonable value for its parameters will be relatively large, like 50. So, how does this relate to gradient descent? Well, let's take a look at the scatter plot of the features, where the size is square feet is the horizontal axis, X1, and the number of bedrooms, X2 is on the vertical axis. If you plot the training data, you notice that the horizontal axis is on a much larger scale, or much larger range of values compared to the vertical axis. Next, let's look at how the construction might look in a contour plot. You might see a contour plot where the horizontal axis has a much narrower range, say between 0 and 1, whereas the vertical axis takes on much larger values, say between 10 and 100. So, the contour is formed ovals or ellipses, and there's shorter one side and longer on the other. And this is because a very small change to W1 can have a very large impact on the estimated price, and does a very large impact on the cost J, because W1 tends to be multiplied by a very large number, the size and square feet. In contrast, it takes a much larger change in W2 in order to change the predictions much, and does small changes to W2, don't change the cost function nearly as much. So, where does this leave us? This is what my end up happening if you were to run gradient descent, if you were to use your training data as is, because the contours are so tall and skinny, gradient descent may end up bouncing back and forth for a long time before it can finally find its way to the global minimum. In situations like this, a useful thing to do is to scale the features. This means performing some transformation of your training data so that X1, say, my now range from 0 to 1 and X2, my also range from 0 to 1. So, the data points now look more like this, and you might notice that the scale of the plot on the bottom is now quite different than the one on top. The key point is that the R scale X1 and X2 are both now taking comparable ranges of values to each other. And if you run gradient descent on a cos function to find on this R scale X1 and X2, using this transform data, then the cos walls will look more like this, more like circles and less tall and skinny, and gradient descent can find a much more direct path to the global minimum. So to recap, when you have different features, they take on very different ranges of values. They can cause gradient descent to run slowly. But rescale in the different features so they all take on comparable range of values can speed up gradient descent significantly. How do you actually do this? Let's take a look at that in the next video.",
+  "segments": [
+    {
+      "start": 2.22,
+      "end": 3.8,
+      "text": "So, welcome back."
+    },
+    {
+      "start": 3.8,
+      "end": 8.3,
+      "text": "Let's take a look at some techniques that make great-dint-descent work much better."
+    },
+    {
+      "start": 8.3,
+      "end": 15.64,
+      "text": "In this video, you see a technique called feature scaling that will enable great-dint-descent to run much faster."
+    },
+    {
+      "start": 15.64,
+      "end": 26.36,
+      "text": "Let's start by taking a look at the relationship between the size of a feature that is how big are the numbers for that feature and the size of a associated parameter."
+    },
+    {
+      "start": 26.88,
+      "end": 36.72,
+      "text": "As a concrete example, let's predict the price of a hulls using two features, X1, the size of the hulls and X2, the number of bedrooms."
+    },
+    {
+      "start": 36.72,
+      "end": 47.8,
+      "text": "Let's say that X1 typically ranges from 300 to 2000 square feet and X2 in the days of set ranges from 0 to 5 bedrooms."
+    },
+    {
+      "start": 48.22,
+      "end": 58.22,
+      "text": "So, for this example, X1 takes on the relatively large range of values and X2 takes on the relatively small range of values."
+    },
+    {
+      "start": 58.22,
+      "end": 71.78,
+      "text": "Now, let's take an example of a hulls that has a size of 2000 square feet, has five bedrooms, and a price of 500k or 500k dollars."
+    },
+    {
+      "start": 71.78,
+      "end": 80.39,
+      "text": "For this one training example, what do you think are reasonable values for the size of parameters, W1 and W2?"
+    },
+    {
+      "start": 80.39,
+      "end": 83.65,
+      "text": "Well, let's look at one possible set of parameters."
+    },
+    {
+      "start": 83.65,
+      "end": 94.04,
+      "text": "Say, W1 is 50, and W2 is 0.1, and B is 50 for the purposes of discussion."
+    },
+    {
+      "start": 94.04,
+      "end": 110.22,
+      "text": "So, in this case, the estimated price in thousands of dollars is 100,000k here plus 0.5k plus 50k, which is slightly over 100 million dollars."
+    },
+    {
+      "start": 110.22,
+      "end": 117.5,
+      "text": "So, that's clearly very far from the actual price of 500,000 dollars."
+    },
+    {
+      "start": 117.5,
+      "end": 123.48,
+      "text": "And so, this is not a very good set of parameters for W1 and W2."
+    },
+    {
+      "start": 123.62,
+      "end": 126.66,
+      "text": "Now, let's take a look at another possibility."
+    },
+    {
+      "start": 126.66,
+      "end": 131.04,
+      "text": "Say, W1 and W2 were the other way around."
+    },
+    {
+      "start": 131.04,
+      "end": 137.24,
+      "text": "W1 is 0.1, and W2 is 50, and B is still also 50."
+    },
+    {
+      "start": 137.24,
+      "end": 148.21,
+      "text": "In this choice of W1 and W2, W1 is relatively small, and W2 is relatively large, 50 is much bigger than 0.1."
+    },
+    {
+      "start": 148.35,
+      "end": 158.18,
+      "text": "So, here, the predicted price is 0.1 times 2000 plus 50 times 5 plus 50."
+    },
+    {
+      "start": 158.18,
+      "end": 165.34,
+      "text": "The first term becomes 200k, the second term becomes 250k, and then plus 50."
+    },
+    {
+      "start": 165.34,
+      "end": 172.42,
+      "text": "So, this version of the model predicts a price of 500,000 dollars, which is a much more reasonable estimate,"
+    },
+    {
+      "start": 172.42,
+      "end": 176.47,
+      "text": "and it happens to be the same price as the true price of the house."
+    },
+    {
+      "start": 176.57,
+      "end": 182.51,
+      "text": "So, hopefully, you might notice that when a possible range of values of a feature is large,"
+    },
+    {
+      "start": 182.51,
+      "end": 186.45,
+      "text": "like the size and square feet, which goes all the way up to 2000,"
+    },
+    {
+      "start": 186.45,
+      "end": 191.07,
+      "text": "it's more likely that a good model will learn to choose a relatively small,"
+    },
+    {
+      "start": 191.07,
+      "end": 194.41,
+      "text": "RAM to value, like 0.1."
+    },
+    {
+      "start": 194.41,
+      "end": 200.53,
+      "text": "Likewise, when the possible values of a feature are small, like the number of bedrooms,"
+    },
+    {
+      "start": 200.53,
+      "end": 206.23,
+      "text": "then a reasonable value for its parameters will be relatively large, like 50."
+    },
+    {
+      "start": 206.23,
+      "end": 209.89,
+      "text": "So, how does this relate to gradient descent?"
+    },
+    {
+      "start": 209.89,
+      "end": 214.95,
+      "text": "Well, let's take a look at the scatter plot of the features,"
+    },
+    {
+      "start": 214.95,
+      "end": 219.79,
+      "text": "where the size is square feet is the horizontal axis, X1,"
+    },
+    {
+      "start": 219.79,
+      "end": 224.39,
+      "text": "and the number of bedrooms, X2 is on the vertical axis."
+    },
+    {
+      "start": 224.39,
+      "end": 230.33,
+      "text": "If you plot the training data, you notice that the horizontal axis is on a much larger scale,"
+    },
+    {
+      "start": 230.33,
+      "end": 234.39,
+      "text": "or much larger range of values compared to the vertical axis."
+    },
+    {
+      "start": 235.4,
+      "end": 240.86,
+      "text": "Next, let's look at how the construction might look in a contour plot."
+    },
+    {
+      "start": 240.86,
+      "end": 247.06,
+      "text": "You might see a contour plot where the horizontal axis has a much narrower range,"
+    },
+    {
+      "start": 247.06,
+      "end": 252.96,
+      "text": "say between 0 and 1, whereas the vertical axis takes on much larger values,"
+    },
+    {
+      "start": 252.96,
+      "end": 255.76,
+      "text": "say between 10 and 100."
+    },
+    {
+      "start": 255.76,
+      "end": 263.46,
+      "text": "So, the contour is formed ovals or ellipses, and there's shorter one side and longer on the other."
+    },
+    {
+      "start": 263.46,
+      "end": 270.96,
+      "text": "And this is because a very small change to W1 can have a very large impact on the estimated price,"
+    },
+    {
+      "start": 270.96,
+      "end": 274.56,
+      "text": "and does a very large impact on the cost J,"
+    },
+    {
+      "start": 274.56,
+      "end": 281.26,
+      "text": "because W1 tends to be multiplied by a very large number, the size and square feet."
+    },
+    {
+      "start": 281.26,
+      "end": 287.86,
+      "text": "In contrast, it takes a much larger change in W2 in order to change the predictions much,"
+    },
+    {
+      "start": 288.06,
+      "end": 294.45,
+      "text": "and does small changes to W2, don't change the cost function nearly as much."
+    },
+    {
+      "start": 294.45,
+      "end": 296.45,
+      "text": "So, where does this leave us?"
+    },
+    {
+      "start": 296.45,
+      "end": 300.95,
+      "text": "This is what my end up happening if you were to run gradient descent,"
+    },
+    {
+      "start": 300.95,
+      "end": 304.45,
+      "text": "if you were to use your training data as is,"
+    },
+    {
+      "start": 304.45,
+      "end": 311.95,
+      "text": "because the contours are so tall and skinny, gradient descent may end up bouncing back and forth"
+    },
+    {
+      "start": 311.95,
+      "end": 317.25,
+      "text": "for a long time before it can finally find its way to the global minimum."
+    },
+    {
+      "start": 317.25,
+      "end": 322.35,
+      "text": "In situations like this, a useful thing to do is to scale the features."
+    },
+    {
+      "start": 322.35,
+      "end": 328.35,
+      "text": "This means performing some transformation of your training data so that X1, say,"
+    },
+    {
+      "start": 328.35,
+      "end": 335.05,
+      "text": "my now range from 0 to 1 and X2, my also range from 0 to 1."
+    },
+    {
+      "start": 335.05,
+      "end": 337.85,
+      "text": "So, the data points now look more like this,"
+    },
+    {
+      "start": 337.85,
+      "end": 344.93,
+      "text": "and you might notice that the scale of the plot on the bottom is now quite different than the one on top."
+    },
+    {
+      "start": 345.13,
+      "end": 354.05,
+      "text": "The key point is that the R scale X1 and X2 are both now taking comparable ranges of values to each other."
+    },
+    {
+      "start": 354.05,
+      "end": 360.95,
+      "text": "And if you run gradient descent on a cos function to find on this R scale X1 and X2,"
+    },
+    {
+      "start": 360.95,
+      "end": 365.85,
+      "text": "using this transform data, then the cos walls will look more like this,"
+    },
+    {
+      "start": 365.85,
+      "end": 374.62,
+      "text": "more like circles and less tall and skinny, and gradient descent can find a much more direct path to the global minimum."
+    },
+    {
+      "start": 374.72,
+      "end": 379.82,
+      "text": "So to recap, when you have different features, they take on very different ranges of values."
+    },
+    {
+      "start": 379.82,
+      "end": 382.82,
+      "text": "They can cause gradient descent to run slowly."
+    },
+    {
+      "start": 382.82,
+      "end": 387.52,
+      "text": "But rescale in the different features so they all take on comparable range of values"
+    },
+    {
+      "start": 387.52,
+      "end": 390.42,
+      "text": "can speed up gradient descent significantly."
+    },
+    {
+      "start": 390.42,
+      "end": 394.42,
+      "text": "How do you actually do this? Let's take a look at that in the next video."
+    }
+  ]
+}

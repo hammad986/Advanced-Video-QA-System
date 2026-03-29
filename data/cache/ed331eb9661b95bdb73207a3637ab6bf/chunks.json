@@ -1,0 +1,24 @@
+{
+  "video_id": "05_index",
+  "total_chunks": 2,
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "video_id": "05_index",
+      "start": 1.1,
+      "end": 142.24,
+      "duration": 141.14,
+      "word_count": 298,
+      "text": "In the last video, you saw what is unsupervised learning and one type of unsupervised learning called clustering. Let's give a slightly more formal definition of unsupervised learning and take a quick look at some other types of unsupervised learning other than clustering. Whereas in supervised learning, the data comes with both inputs x and output labels y in unsupervised learning, the data comes only with inputs x but not output labels y and the algorithm has to find some structure or some pattern or something interesting in the data. which groups similar data points together. In this specialization, you learn about clustering, as well as two other types of unsupervised learning. One is called anomaly detection, which is used to detect unusual events. This turns out to be really important for fraud detection in the financial system where unusual events unusual transactions could be a size of fraud. And you also learn about dimensionality reduction. This lets you take a big dataset and almost magically compress it to a much smaller dataset while losing as little information as possible. In case the non-medit detection and dimensionality reduction don't seem to make too much sense to you yet, don't worry about it. We'll get to this later in this specialization. Now I'd like to ask you another question. check your understanding. And no pressure if you don't get it right on the first try is totally fine. Please select any of the following that you think are examples of unsupervised learning. Two are unsupervised examples and two are supervised learning examples. So please take a look. Maybe you remember the span filtering problem. If you have labeled data, you know labeled S. the new story example, that's exactly the Google news and hand-to-example that you saw in the"
+    },
+    {
+      "chunk_id": 1,
+      "video_id": "05_index",
+      "start": 142.24,
+      "end": 218.71,
+      "duration": 76.47,
+      "word_count": 190,
+      "text": "last video. And so you can approach that using a clustering algorithm to group news articles together, so that would use unsupervised learning. The Marcus segmentation example that I talked about the open earlier, you can do that as an unsupervised learning problem. your algorithm some data and ask it to discover Marcus segments automatically. And the final example on diagnosing diabetes, well actually that's a lot like our breast cancer example from the supervised learning videos. Only instead of denying or malignant tumours, we instead have diabetes or not diabetes. And so you can approach this as a supervised learning problem just like we did for the breast tumor classification. Even though in this in the last video, with tough mainly about clustering, in later videos in the specialization will dive much more deeply into a normally detection and dimensionality reduction as well. So that's unsupervised learning. Before we wrap up this section, I want to share a view of something that I find really exciting and useful, which is the use of juket and notebooks in machine learning. Let's take a look at that in the next video."
+    }
+  ]
+}
