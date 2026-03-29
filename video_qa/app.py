@@ -268,6 +268,9 @@ if "last_question" not in st.session_state:
 if IS_CLOUD:
     st.info("☁️ **Cloud Mode Active**: Q&A restricted to pre-processed videos. Video processing and YouTube features are disabled.")
 
+if is_cloud():
+    st.info("Cloud mode active")
+
 
 # ─────────────────────────────────────────────
 # Cached pipeline
