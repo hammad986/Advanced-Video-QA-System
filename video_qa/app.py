@@ -11,7 +11,14 @@ Fixes applied:
 """
 
 import os
+import sys
 from pathlib import Path
+
+# Add project root to sys.path so config_loader can be found
+_BASE_DIR_EARLY = Path(__file__).parent.parent
+if str(_BASE_DIR_EARLY) not in sys.path:
+    sys.path.insert(0, str(_BASE_DIR_EARLY))
+
 from config_loader import load_config
 
 # BASE_DIR is the project root

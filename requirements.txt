@@ -6,3 +6,9 @@ pandas
 sentence-transformers
 google-generativeai
 python-dotenv
+joblib
+numpy
+pandas
+python-dotenv
+pyyaml
+streamlit
