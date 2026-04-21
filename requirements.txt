@@ -12,3 +12,10 @@ pandas
 python-dotenv
 pyyaml
 streamlit
+# SaaS API layer
+fastapi
+uvicorn[standard]
+python-multipart
+passlib[bcrypt]
+PyJWT
+email-validator

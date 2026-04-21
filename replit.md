@@ -7,7 +7,10 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 ## Tech Stack
 
 - **Language**: Python 3.12
-- **UI**: Streamlit (web interface on port 5000)
+- **API**: FastAPI + uvicorn (REST surface on port 5000)
+- **UI**: Streamlit (legacy interface, runs separately if needed)
+- **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing
+- **App DB**: SQLite at `data/saas.db` (users, videos)
 - **Embeddings**: `BAAI/bge-small-en` (via sentence-transformers)
 - **Vector Store**: FAISS (CPU)
 - **Speech-to-Text**: WhisperX / faster-whisper
@@ -18,8 +21,14 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 ## Project Structure
 
 ```
+api/                # SaaS REST surface (uvicorn entrypoint: api.main:app)
+  main.py           # FastAPI app + routes
+  schemas.py        # Pydantic request/response models
+  auth.py           # pbkdf2_sha256 + JWT (HS256) bearer auth
+  db.py             # SQLite (users, videos)
+
 video_qa/           # Core package
-  app.py            # Streamlit UI (main entry point)
+  app.py            # Streamlit UI (legacy)
   pipeline.py       # 9-stage RAG pipeline orchestrator
   video_processor.py
   speech_understanding.py

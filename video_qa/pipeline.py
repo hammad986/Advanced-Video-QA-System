@@ -117,33 +117,51 @@ class VideoQAPipeline:
         cached_meta = cache_dir / "metadata.pkl"
 
         # ── CACHE HIT ────────────────────────────────────────────────────────
-        if cache_dir.exists() and cached_index.exists() and cached_meta.exists():
-            logger.info(f"⚡ CACHE HIT! Found existing processed data for video hash: {video_md5}")
-            
-            # Ensure directories exist
+        # We only restore the per-video artifacts (transcript / chunks / summary)
+        # and then merge them into the *current* shared index via
+        # build_vector_index(reset=False). We deliberately never overwrite the
+        # active FAISS/metadata files with the cached snapshots — those are
+        # single-video subsets that would wipe out every other tenant's data.
+        # (For multi-tenant SaaS, the same source bytes uploaded by two users
+        # must produce two namespaced video_ids, so we also rewrite the
+        # video_id stamped inside the cached JSON before merging.)
+        if cache_dir.exists() and cached_chunks.exists():
+            logger.info(f"⚡ CACHE HIT for hash {video_md5} — reusing transcript/chunks, "
+                        f"merging into shared index as '{video_id}'.")
+
             active_transcript.parent.mkdir(parents=True, exist_ok=True)
             active_chunks.parent.mkdir(parents=True, exist_ok=True)
             active_summary.parent.mkdir(parents=True, exist_ok=True)
-            active_index.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Remove stale active files first
-            for active_file in [active_transcript, active_chunks, active_summary, active_index, active_meta]:
-                if active_file.exists():
-                    active_file.unlink()
-                    
-            # Copy from cache to active
-            if cached_transcript.exists():
-                shutil.copy2(cached_transcript, active_transcript)
-            if cached_chunks.exists():
-                shutil.copy2(cached_chunks, active_chunks)
-            if cached_summary.exists():
-                shutil.copy2(cached_summary, active_summary)
-            if cached_index.exists():
-                shutil.copy2(cached_index, active_index)
-            if cached_meta.exists():
-                shutil.copy2(cached_meta, active_meta)
-                
-            logger.info("Restored pipeline state from cache successfully.")
+
+            def _restamp_and_copy(src: Path, dst: Path) -> None:
+                """Copy a cached JSON to the active path, rewriting any embedded
+                video_id field to match the new active video_id."""
+                if not src.exists():
+                    return
+                try:
+                    import json as _json
+                    with src.open("r", encoding="utf-8") as f:
+                        data = _json.load(f)
+                    if isinstance(data, dict) and "video_id" in data:
+                        data["video_id"] = video_id
+                    with dst.open("w", encoding="utf-8") as f:
+                        _json.dump(data, f, ensure_ascii=False)
+                except Exception:
+                    # Fall back to raw copy if the file isn't JSON-shaped.
+                    shutil.copy2(src, dst)
+
+            _restamp_and_copy(cached_transcript, active_transcript)
+            _restamp_and_copy(cached_chunks, active_chunks)
+            _restamp_and_copy(cached_summary, active_summary)
+
+            # Merge the new chunks into the shared FAISS index (no reset).
+            # build_vector_index dedups by text so this is a no-op when the
+            # exact chunk text is already present under another video_id.
+            if not build_vector_index(reset=False):
+                logger.error("Index merge from cache failed")
+                return None
+
+            logger.info("Cache restore + index merge complete.")
             self._initialize_components()
             return video_id
 
@@ -213,16 +231,17 @@ class VideoQAPipeline:
         logger.info(f"\n[CACHE] Saving results to cache directory: {video_md5}")
         cache_dir.mkdir(parents=True, exist_ok=True)
         
+        # Cache only per-video artifacts. We deliberately do NOT cache the
+        # global FAISS/metadata files: those are shared across all videos
+        # (and, in SaaS, across all users) and become stale snapshots the
+        # moment any other video is indexed. The cache-hit branch above
+        # rebuilds index entries from the cached chunks instead.
         if active_transcript.exists():
             shutil.copy2(active_transcript, cached_transcript)
         if active_chunks.exists():
             shutil.copy2(active_chunks, cached_chunks)
         if active_summary.exists():
             shutil.copy2(active_summary, cached_summary)
-        if active_index.exists():
-            shutil.copy2(active_index, cached_index)
-        if active_meta.exists():
-            shutil.copy2(active_meta, cached_meta)
 
         logger.info("\n[COMPLETE] Pipeline finished!")
         logger.info("="*60)
