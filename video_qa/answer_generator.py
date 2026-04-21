@@ -93,19 +93,33 @@ def get_gemini_response(prompt: str) -> Optional[str]:
 
 def build_answer_prompt(query: str, contexts: List[Dict[str, Any]]) -> str:
     """
-    Build a simple prompt with combined context.
+    Build a grounded QA prompt that:
+      - shows each chunk with its [mm:ss - mm:ss] timestamp
+      - forces the model to answer ONLY from the given context
+      - asks for an inline timestamp citation
+      - requires an exact "Not found in video." string when evidence is missing
     """
-    context_text = "\n\n".join(
-        [f"--- Chunk {i+1} ---\n{ctx.get('text', '')}" for i, ctx in enumerate(contexts)]
-    )
+    parts = []
+    for i, ctx in enumerate(contexts, 1):
+        ts = format_time_range(ctx.get("start", 0), ctx.get("end", 0))
+        parts.append(f"--- Chunk {i}  {ts} ---\n{ctx.get('text', '')}")
+    context_text = "\n\n".join(parts)
 
-    return f"""You are a Video QA assistant.
+    return f"""You are a Video QA assistant. You answer questions strictly from the
+transcript excerpts of a video that are provided below. Each excerpt is tagged
+with its timestamp in [mm:ss - mm:ss] format.
 
-Given the following context from a video:
+TRANSCRIPT CONTEXT:
 {context_text}
 
-Answer ONLY from the given context. If not found, say exactly: Not found in video.
-Keep your answer concise (1-2 sentences). Do not hallucinate or use outside knowledge.
+RULES:
+1. Answer ONLY using information explicitly present in the transcript above.
+2. Do NOT use outside knowledge. Do NOT speculate.
+3. Keep the answer concise: 1-3 sentences.
+4. End your answer with the timestamp of the chunk you used, in the form
+   (see [mm:ss - mm:ss]).
+5. If the answer is not contained in the transcript, respond with EXACTLY:
+   Not found in video.
 
 Question: {query}
 Answer:"""
@@ -207,22 +221,48 @@ def ask_huggingface_llm(prompt: str) -> Optional[str]:
 def generate_with_fallback(prompt: str) -> Dict[str, str]:
     """
     Generate an answer trying multiple LLM providers.
-    Sequence: local -> Gemini -> Ollama -> OpenAI -> HuggingFace -> Error
+    Preferred sequence: Gemini -> Ollama (local) -> OpenAI -> HuggingFace -> Error
     """
     import os
 
-    # If configured for cloud (no local), directly use Gemini first
-    if not config.get("answer.use_local", True):
-        gemini_answer = get_gemini_response(prompt)
-        if gemini_answer:
-            return {
-                "response": gemini_answer,
-                "provider": "gemini",
-                "status": "Using Gemini (cloud configuration)"
-            }
-        logger.warning("Gemini fallback in cloud mode returned no response. Continuing with fallback chain.")
+    # 1. Try Gemini FIRST (preferred cloud provider)
+    try:
+        import google.generativeai as genai
 
-    # 1. Try Ollama (local mode)
+        api_key = os.environ.get("GEMINI_API_KEY") or config.get("answer.gemini_api_key", "")
+        if not api_key or api_key == "${GEMINI_API_KEY}":
+            try:
+                from dotenv import dotenv_values
+                env_dict = dotenv_values(".env")
+                api_key = env_dict.get("GEMINI_API_KEY", "")
+            except Exception:
+                pass
+
+        if api_key and api_key != "${GEMINI_API_KEY}":
+            genai.configure(api_key=api_key.strip("'\" \n\r"))
+            model_name = config.get("answer.gemini_model", "gemini-2.5-flash")
+            model = genai.GenerativeModel(model_name)
+            resp = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.1,
+                    "max_output_tokens": config.get("answer.max_tokens", 256),
+                },
+            )
+            if resp and getattr(resp, "text", None):
+                logger.info(f"[LLM] Gemini ({model_name}) returned {len(resp.text)} chars")
+                return {
+                    "response": resp.text.strip(),
+                    "provider": "gemini",
+                    "status": f"Using Gemini ({model_name})",
+                }
+            logger.warning("[LLM] Gemini returned empty response; falling through.")
+        else:
+            logger.info("[LLM] GEMINI_API_KEY not set; skipping Gemini.")
+    except Exception as e:
+        logger.error(f"Gemini call failed: {e}")
+
+    # 2. Try Ollama (local mode)
     try:
         if config.get("answer.use_local", True):
             response = ask_local_llm(prompt)
@@ -235,30 +275,6 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
             logger.warning("⚠️ Ollama not available (low memory or not running)")
     except Exception as e:
         logger.error(f"Ollama fallback skipped: {e}")
-
-    # 2. Try Gemini
-    try:
-        import google.generativeai as genai
-        from dotenv import dotenv_values
-        
-        # Try finding key in normal os.environ or fallback to explicit direct disk read
-        api_key = os.environ.get("GEMINI_API_KEY") or config.get("answer.gemini_api_key", "")
-        if not api_key or api_key == "${GEMINI_API_KEY}":
-            env_dict = dotenv_values(".env")
-            api_key = env_dict.get("GEMINI_API_KEY", "")
-            
-        if api_key and api_key != "${GEMINI_API_KEY}":
-            genai.configure(api_key=api_key.strip("'\" \n\r"))
-            model = genai.GenerativeModel(config.get("answer.gemini_model", "gemini-2.5-flash"))
-            resp = model.generate_content(prompt)
-            if resp and hasattr(resp, 'text') and resp.text:
-                return {
-                    "response": resp.text.strip(),
-                    "provider": "gemini",
-                    "status": "Using Gemini fallback"
-                }
-    except Exception as e:
-        logger.error(f"Gemini fallback failed: {e}")
 
     # 3. Try OpenAI
     try:
@@ -430,11 +446,19 @@ def generate_answer(
     else:
         logger.warning("[LLM] All AI services failed or generated None.")
 
-    if not answer or len(answer.strip()) < 5 or _is_not_found(answer):
-        if contexts:
-            answer = contexts[0].get("text", "")[:200]
+    # If LLM failed or answer is empty/too short/"not found", use extractive fallback
+    llm_failed = (not answer) or (len(answer.strip()) < 5)
+    if llm_failed:
+        extractive = _extractive_fallback(query, contexts)
+        if extractive:
+            answer = extractive
+            provider = "extractive"
+            status_msg = "LLM unavailable — using extractive fallback"
         else:
-            answer = "NOT FOUND IN VIDEO"
+            answer = "Not found in video."
+    elif _is_not_found(answer):
+        # LLM explicitly said "Not found" — keep its decision, don't paper over it
+        answer = "Not found in video."
 
     result = {
         "answer":            answer,
