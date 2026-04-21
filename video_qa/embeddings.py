@@ -448,16 +448,15 @@ class VectorStore:
             return out
 
         if video_id:
-            # First try: filter by video_id
+            # Strict scoping: only return chunks belonging to this video.
+            # Returning empty when there are no matches preserves grounding
+            # integrity (caller must not silently get answers from other videos).
             results = _collect(apply_filter=True)
             if not results:
-                # Fall-back: return global top-k (avoids 0-chunk failure when
-                # index was built before video_id tracking was introduced)
                 logger.warning(
                     f"video_id filter '{video_id}' matched 0 chunks — "
-                    "falling back to un-filtered top-k retrieval."
+                    "preserving scope: returning empty result."
                 )
-                results = _collect(apply_filter=False)
         else:
             results = _collect(apply_filter=False)
 

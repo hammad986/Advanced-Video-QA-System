@@ -79,9 +79,8 @@ class RetrievalSystem:
             if not results:
                 logger.warning(
                     f"[RETRIEVAL] video_id filter '{video_id}' matched 0 chunks — "
-                    "falling back to global retrieval."
+                    "preserving scope: returning empty result."
                 )
-                results = _collect(apply_filter=False)
         else:
             results = _collect(apply_filter=False)
         
