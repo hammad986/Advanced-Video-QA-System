@@ -75,16 +75,15 @@ class RetrievalSystem:
         # to prevent fallback.
         
         if video_id:
-            # FIX 2: Filter strictly by video_id.
             results = _collect(apply_filter=True)
             if not results:
                 logger.warning(
                     f"[RETRIEVAL] video_id filter '{video_id}' matched 0 chunks — "
-                    "returning empty result to preserve video scoping (NOT FOUND IN VIDEO)."
+                    "falling back to global retrieval."
                 )
+                results = _collect(apply_filter=False)
         else:
-            logger.warning("[RETRIEVAL] No active video_id provided. Returning empty result to prevent cross-video context leakage.")
-            results = []
+            results = _collect(apply_filter=False)
         
         logger.info(f"\n[RETRIEVAL DEBUG] Total chunks retrieved: {len(results)}")
         for i, chunk in enumerate(results, 1):
