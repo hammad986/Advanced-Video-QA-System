@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Multi-Video Compare · Video-QA</title>
+<style>
+  :root { --bg:#0f1419; --panel:#1a2028; --line:#2a3340; --fg:#e8edf2;
+          --mut:#8a96a3; --acc:#4f9eff; --warn:#ffb454; --err:#ff6b6b;
+          --ok:#5fcf80; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
+         system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+  header { padding:14px 22px; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; gap:18px; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  nav { display:flex; gap:6px; }
+  nav .tab { padding:6px 12px; border-radius:6px; cursor:pointer;
+             font-size:13px; color:var(--mut); }
+  nav .tab.active { background:var(--panel); color:var(--fg); }
+  nav .tab.disabled { opacity:.4; cursor:not-allowed; }
+  main { max-width:1100px; margin:0 auto; padding:24px; }
+  .card { background:var(--panel); border:1px solid var(--line);
+          border-radius:10px; padding:18px; margin-bottom:18px; }
+  .card h2 { margin:0 0 12px; font-size:15px; font-weight:600; }
+  label { display:block; font-size:12px; color:var(--mut);
+          margin:10px 0 4px; }
+  input, textarea, button {
+    font-family:inherit; font-size:14px; color:var(--fg);
+    background:#0d1218; border:1px solid var(--line);
+    border-radius:6px; padding:10px 12px; width:100%; outline:none;
+  }
+  input:focus, textarea:focus { border-color:var(--acc); }
+  textarea { resize:vertical; min-height:70px; }
+  button { background:var(--acc); border-color:var(--acc); color:#fff;
+           cursor:pointer; font-weight:600; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  button.ghost { background:transparent; color:var(--mut);
+                 border-color:var(--line); }
+  .row { display:flex; gap:10px; }
+  .row > * { flex:1; }
+  .vid-list { max-height:260px; overflow-y:auto; border:1px solid var(--line);
+              border-radius:6px; padding:6px; }
+  .vid-row { display:flex; gap:10px; align-items:center;
+             padding:8px 10px; border-radius:5px; cursor:pointer; }
+  .vid-row:hover { background:#0d1218; }
+  .vid-row input { width:auto; }
+  .vid-row .name { flex:1; font-size:13px; }
+  .vid-row .status { font-size:11px; color:var(--mut); }
+  .vid-row .status.ready { color:var(--ok); }
+  .vid-row .status.uploaded, .vid-row .status.processing { color:var(--warn); }
+  .vid-row .status.failed { color:var(--err); }
+  .small { font-size:12px; color:var(--mut); }
+  .answer { background:#0d1218; border-left:3px solid var(--acc);
+            padding:14px 16px; border-radius:6px; line-height:1.55;
+            white-space:pre-wrap; }
+  .pv { background:#0d1218; border:1px solid var(--line);
+        border-radius:8px; padding:14px; margin-top:12px; }
+  .pv .head { display:flex; justify-content:space-between;
+              align-items:baseline; gap:10px; margin-bottom:8px; }
+  .pv .head .fn { font-weight:600; font-size:14px; word-break:break-all; }
+  .pv .head .cf { font-size:12px; color:var(--mut); }
+  .conf-bar { height:5px; background:#1a2028; border-radius:3px;
+              margin:6px 0 10px; overflow:hidden; }
+  .conf-bar > div { height:100%; background:var(--acc); }
+  .ts { display:inline-block; background:#1a2028; color:var(--mut);
+        font-family:ui-monospace,Menlo,monospace; font-size:11px;
+        padding:2px 6px; border-radius:3px; margin:3px 4px 0 0; }
+  .err { color:var(--err); font-size:13px; margin-top:8px; }
+  .ok  { color:var(--ok);  font-size:13px; margin-top:8px; }
+  .hidden { display:none; }
+  .spin { display:inline-block; width:12px; height:12px;
+          border:2px solid var(--line); border-top-color:var(--acc);
+          border-radius:50%; animation:s 0.8s linear infinite; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  .who { margin-left:auto; font-size:12px; color:var(--mut); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Video-QA</h1>
+  <nav>
+    <span class="tab disabled" title="Use the API directly: POST /upload_video">Upload</span>
+    <span class="tab disabled" title="Use the API directly: POST /ask_question">Ask</span>
+    <span class="tab active">Multi-Video Compare</span>
+  </nav>
+  <span class="who" id="who"></span>
+</header>
+
+<main>
+  <!-- Login -->
+  <section id="loginCard" class="card">
+    <h2>Sign in</h2>
+    <p class="small">Use your existing Video-QA account, or register a new one
+       below. Tokens are stored in your browser only.</p>
+    <label>Email</label><input id="email" type="email" autocomplete="email"/>
+    <label>Password</label>
+    <input id="password" type="password" autocomplete="current-password"/>
+    <div class="row" style="margin-top:14px;">
+      <button id="loginBtn">Sign in</button>
+      <button id="registerBtn" class="ghost">Create account</button>
+    </div>
+    <div id="authMsg"></div>
+  </section>
+
+  <!-- Compare -->
+  <section id="appCard" class="card hidden">
+    <h2>Compare videos</h2>
+    <p class="small">Pick 2 or more of your processed videos and ask a single
+       question. You'll get one comparative answer plus a per-video breakdown
+       with timestamps and confidence.</p>
+
+    <label>Your videos</label>
+    <div id="vidList" class="vid-list"><span class="small">Loading…</span></div>
+
+    <label>Question</label>
+    <textarea id="question"
+      placeholder="e.g. How does each lecture define overfitting?"></textarea>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="compareBtn">Compare</button>
+      <button id="refreshBtn" class="ghost">Refresh videos</button>
+      <button id="logoutBtn" class="ghost">Sign out</button>
+    </div>
+    <div id="compareMsg"></div>
+  </section>
+
+  <!-- Result -->
+  <section id="resultCard" class="card hidden">
+    <h2>Comparison</h2>
+    <div class="small" id="meta"></div>
+    <div class="answer" id="answer"></div>
+    <div id="perVideo"></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const TOKEN_KEY = "vqa_token";
+const EMAIL_KEY = "vqa_email";
+
+function setMsg(el, txt, kind) {
+  el.innerHTML = txt
+    ? `<div class="${kind === "err" ? "err" : kind === "ok" ? "ok" : "small"}">${txt}</div>`
+    : "";
+}
+function spin(el, txt) { el.innerHTML = `<div class="small"><span class="spin"></span> ${txt}</div>`; }
+
+async function api(path, opts = {}) {
+  const headers = Object.assign(
+    { "Content-Type": "application/json" },
+    opts.headers || {},
+  );
+  const tok = localStorage.getItem(TOKEN_KEY);
+  if (tok) headers["Authorization"] = "Bearer " + tok;
+  const r = await fetch(path, Object.assign({}, opts, { headers }));
+  let body = null;
+  try { body = await r.json(); } catch { body = null; }
+  if (!r.ok) {
+    const err = (body && body.detail) || r.statusText || "Request failed";
+    const e = new Error(err); e.status = r.status; throw e;
+  }
+  return body;
+}
+
+async function authPost(path) {
+  const email = $("email").value.trim();
+  const password = $("password").value;
+  if (!email || !password) { setMsg($("authMsg"), "Email and password required", "err"); return; }
+  setMsg($("authMsg"), '<span class="spin"></span> ' + (path.includes("register") ? "Creating account…" : "Signing in…"));
+  try {
+    const r = await api(path, { method: "POST", body: JSON.stringify({ email, password }) });
+    localStorage.setItem(TOKEN_KEY, r.access_token);
+    localStorage.setItem(EMAIL_KEY, email);
+    setMsg($("authMsg"), "");
+    showApp();
+  } catch (e) { setMsg($("authMsg"), e.message, "err"); }
+}
+
+$("loginBtn").onclick = () => authPost("/auth/login");
+$("registerBtn").onclick = () => authPost("/auth/register");
+$("logoutBtn").onclick = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(EMAIL_KEY);
+  showLogin();
+};
+$("refreshBtn").onclick = () => loadVideos();
+
+async function showApp() {
+  $("loginCard").classList.add("hidden");
+  $("appCard").classList.remove("hidden");
+  $("who").textContent = localStorage.getItem(EMAIL_KEY) || "";
+  await loadVideos();
+}
+function showLogin() {
+  $("loginCard").classList.remove("hidden");
+  $("appCard").classList.add("hidden");
+  $("resultCard").classList.add("hidden");
+  $("who").textContent = "";
+}
+
+async function loadVideos() {
+  spin($("vidList"), "Loading your videos…");
+  try {
+    const vids = await api("/videos");
+    if (!vids.length) {
+      $("vidList").innerHTML = '<div class="small">No videos yet. Upload via <code>POST /upload_video</code> and process via <code>POST /process_video</code>.</div>';
+      return;
+    }
+    // SECURITY: filename + video_id come from user-controlled uploads, so we
+    // escape every interpolation. status is a server-controlled enum but we
+    // escape it too for defence-in-depth.
+    $("vidList").innerHTML = vids.map(v => `
+      <label class="vid-row">
+        <input type="checkbox" data-vid="${escapeAttr(v.video_id)}" ${v.status === "ready" ? "" : "disabled"} />
+        <span class="name">${escapeHtml(v.filename)}</span>
+        <span class="status ${escapeAttr(v.status)}">${escapeHtml(v.status)}</span>
+      </label>`).join("");
+  } catch (e) {
+    if (e.status === 401) { showLogin(); return; }
+    $("vidList").innerHTML = `<div class="err">${e.message}</div>`;
+  }
+}
+
+$("compareBtn").onclick = async () => {
+  const ids = [...document.querySelectorAll("#vidList input:checked")]
+    .map(el => el.dataset.vid);
+  const question = $("question").value.trim();
+  if (ids.length < 2) { setMsg($("compareMsg"), "Pick at least 2 videos.", "err"); return; }
+  if (!question) { setMsg($("compareMsg"), "Enter a question.", "err"); return; }
+  setMsg($("compareMsg"), '<span class="spin"></span> Comparing…');
+  $("compareBtn").disabled = true;
+  try {
+    const r = await api("/compare_videos", {
+      method: "POST",
+      body: JSON.stringify({ question, video_ids: ids }),
+    });
+    renderResult(r);
+    setMsg($("compareMsg"), "");
+  } catch (e) {
+    if (e.status === 401) { showLogin(); return; }
+    setMsg($("compareMsg"), e.message, "err");
+  } finally { $("compareBtn").disabled = false; }
+};
+
+function renderResult(r) {
+  $("resultCard").classList.remove("hidden");
+  $("meta").textContent = `provider=${r.provider} · ${r.latency_ms} ms · ${r.per_video.length} videos`;
+  $("answer").textContent = r.answer;
+  // SECURITY: every interpolated value is server-stored user input
+  // (filenames especially) — escape all of them. Numeric fields are coerced.
+  $("perVideo").innerHTML = r.per_video.map(pv => {
+    const conf = Math.max(0, Math.min(100, Number(pv.confidence) || 0));
+    const top = Number(pv.top_score) || 0;
+    return `
+    <div class="pv">
+      <div class="head">
+        <span class="fn">${escapeHtml(pv.filename)}</span>
+        <span class="cf">confidence ${conf} · top score ${top.toFixed(3)}</span>
+      </div>
+      <div class="conf-bar"><div style="width:${conf}%"></div></div>
+      <div>${escapeHtml(pv.explanation)}</div>
+      <div style="margin-top:8px">
+        ${pv.timestamps.map(t => `<span class="ts">${escapeHtml(t.label)}</span>`).join("")}
+      </div>
+    </div>`;
+  }).join("");
+  $("resultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+// Stricter escape for use inside HTML attribute values.
+function escapeAttr(s) { return escapeHtml(s); }
+
+// Boot
+if (localStorage.getItem(TOKEN_KEY)) showApp(); else showLogin();
+</script>
+</body>
+</html>

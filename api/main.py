@@ -57,8 +57,10 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.staticfiles import StaticFiles
 
 from . import auth, db
+from .compare import router as compare_router
 from .schemas import (
     AskIn,
     AskOut,
@@ -148,6 +150,13 @@ def _startup() -> None:
     db.init_db()
     USER_UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
     logger.info("[boot] DB initialized at %s", db.DB_PATH)
+
+
+# Multi-Video Compare module (additive, isolated — does not touch /ask_question)
+app.include_router(compare_router)
+_static_dir = Path(__file__).parent / "static"
+if _static_dir.exists():
+    app.mount("/ui", StaticFiles(directory=str(_static_dir), html=True), name="ui")
 
 
 # ── Health ─────────────────────────────────────────────────────────────
