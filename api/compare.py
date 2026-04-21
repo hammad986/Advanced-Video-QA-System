@@ -29,6 +29,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from . import auth, db
+from .compare_gating import evaluate as gate_evaluate
 
 logger = logging.getLogger("video_qa.api.compare")
 
@@ -72,12 +73,28 @@ class PerVideoOut(BaseModel):
     top_score: float
 
 
+class GateDetail(BaseModel):
+    topic_similarity: Optional[float] = None
+    pairwise_topic: List[Dict[str, Any]] = []
+    query_relevance: Dict[str, float] = {}
+    sufficiency: Dict[str, Dict[str, Any]] = {}
+
+
 class CompareOut(BaseModel):
+    # ── Strict spec fields (always present) ────────────────────────────
+    status: str          # "COMPARABLE" | "PARTIAL" | "NOT_COMPARABLE" | "INSUFFICIENT"
+    reason: str          # human-readable explanation of the decision
+    comparison: str      # comparative answer (or refusal text when gated)
+    scores: Dict[str, float] = {}    # video_id → relevance score (0..1)
+    sources: Dict[str, str] = {}     # video_id → "[mm:ss-mm:ss]"
+
+    # ── Existing rich fields (kept for the UI / API consumers) ─────────
     question: str
-    answer: str
-    per_video: List[PerVideoOut]
+    answer: str          # mirror of `comparison` for backward-compat
+    per_video: List[PerVideoOut] = []
     provider: str
     latency_ms: int
+    gate: GateDetail     # full gating evidence so callers can audit decisions
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -204,12 +221,74 @@ def compare_videos(
             "chunks": chunks,
         })
 
-    # 3. LLM call (single comparative prompt). Falls back gracefully.
+    # 3. ── GATING LAYER ──────────────────────────────────────────────
+    # Three deterministic checks (topic alignment, query alignment,
+    # sufficiency) decide if we should answer at all. See compare_gating.py
+    # for thresholds and the decision precedence.
+    # Hard outer try: ANY unexpected failure inside gating must turn into a
+    # safe INSUFFICIENT refusal — never a 500. The gating layer itself
+    # already catches embedding-model errors, but we belt-and-brace it here
+    # in case a future change introduces a new failure mode.
+    try:
+        gate = gate_evaluate(payload.question, per_video_chunks)
+    except Exception as exc:
+        logger.exception("[compare] gate_evaluate crashed: %s", exc)
+        gate = {
+            "decision": "INSUFFICIENT",
+            "reason": "Internal error while evaluating comparability; refusing to compare.",
+            "topic_similarity": None,
+            "pairwise_topic": [],
+            "query_relevance": {ent["video_id"]: 0.0 for ent in per_video_chunks},
+            "sufficiency": {ent["video_id"]: {"ok": False, "top_score": 0.0,
+                                              "n_chunks": len(ent["chunks"]),
+                                              "issue": "gate evaluation failed"}
+                            for ent in per_video_chunks},
+        }
+    decision = gate["decision"]
+
+    # Build the strict-format `scores` (query relevance per video, mapped to
+    # 0..1) and `sources` (top-chunk timestamp range per video) up front so
+    # they're populated for every status — including refusals.
+    scores: Dict[str, float] = {
+        vid: max(0.0, min(1.0, float(s)))
+        for vid, s in gate["query_relevance"].items()
+    }
+    sources: Dict[str, str] = {}
+    for entry in per_video_chunks:
+        if entry["chunks"]:
+            top = entry["chunks"][0]
+            sources[entry["video_id"]] = _fmt_ts(top.get("start", 0), top.get("end", 0))
+        else:
+            sources[entry["video_id"]] = "[no relevant span]"
+
+    # If gate says no, refuse deterministically (no LLM call). This is the
+    # human-expert behaviour the spec asks for: refuse when invalid, explain
+    # clearly, never hallucinate a comparison.
+    if decision in ("NOT_COMPARABLE", "INSUFFICIENT"):
+        per_video_out = _assemble_per_video(per_video_chunks, explanations={})
+        return CompareOut(
+            status=decision,
+            reason=gate["reason"],
+            comparison=gate["reason"],
+            scores=scores,
+            sources=sources,
+            question=payload.question,
+            answer=gate["reason"],
+            per_video=per_video_out,
+            provider="gate",
+            latency_ms=int((time.time() - t0) * 1000),
+            gate=GateDetail(
+                topic_similarity=gate["topic_similarity"],
+                pairwise_topic=gate["pairwise_topic"],
+                query_relevance=gate["query_relevance"],
+                sufficiency=gate["sufficiency"],
+            ),
+        )
+
+    # PARTIAL or COMPARABLE → run the LLM (with extractive fallback).
     from video_qa.answer_generator import generate_with_fallback
     prompt = _build_prompt(payload.question, per_video_chunks)
     llm_result = generate_with_fallback(prompt) or {}
-    # generate_with_fallback returns {"response": ..., "provider": ...}.
-    # Accept "answer" too for forward-compat with any future callers.
     raw = (llm_result.get("response") or llm_result.get("answer") or "").strip()
     provider = llm_result.get("provider") or "extractive"
     parsed = _parse_llm_json(raw)
@@ -222,17 +301,63 @@ def compare_videos(
             if isinstance(item, dict) and "video_id" in item:
                 explanations[str(item["video_id"])] = (item.get("explanation") or "").strip()
     else:
-        # Fallback: keep whatever the LLM said (or build it ourselves).
-        provider = "extractive" if not raw else f"{provider}+unstructured"
-        overall_answer = raw or (
-            "Comparative answer unavailable from LLM; see per-video explanations."
-        )
+        # LLM didn't return parseable JSON. If it returned an error sentinel
+        # (provider == "error" from generate_with_fallback), drop the raw text
+        # entirely and synthesise an extractive answer from the per-video
+        # chunks — never surface "All AI services unavailable" to the user.
+        if provider == "error" or not raw:
+            provider = "extractive"
+            overall_answer = ""  # filled in by the deterministic synthesiser below
+        else:
+            provider = f"{provider}+unstructured"
+            overall_answer = raw
 
     # 4. Assemble per-video output with deterministic confidence + timestamps.
-    per_video_out: List[PerVideoOut] = []
+    per_video_out = _assemble_per_video(per_video_chunks, explanations)
+
+    if not overall_answer:
+        ranked = sorted(per_video_out, key=lambda x: x.confidence, reverse=True)
+        overall_answer = (
+            f"Across the {len(per_video_out)} videos, '{ranked[0].filename}' has the "
+            f"strongest evidence (confidence {ranked[0].confidence}). See per-video "
+            f"explanations for details."
+        )
+
+    if decision == "PARTIAL":
+        # Prefix the LLM answer with the gating reason so the user always sees
+        # *why* this is only a partial comparison — explainable by construction.
+        overall_answer = f"[{decision}] {gate['reason']}\n\n{overall_answer}"
+
+    return CompareOut(
+        status=decision,
+        reason=gate["reason"],
+        comparison=overall_answer,
+        scores=scores,
+        sources=sources,
+        question=payload.question,
+        answer=overall_answer,
+        per_video=per_video_out,
+        provider=provider,
+        latency_ms=int((time.time() - t0) * 1000),
+        gate=GateDetail(
+            topic_similarity=gate["topic_similarity"],
+            pairwise_topic=gate["pairwise_topic"],
+            query_relevance=gate["query_relevance"],
+            sufficiency=gate["sufficiency"],
+        ),
+    )
+
+
+def _assemble_per_video(
+    per_video_chunks: List[Dict[str, Any]],
+    explanations: Dict[str, str],
+) -> List[PerVideoOut]:
+    """Deterministic per-video card builder. Used by both the refusal branch
+    (explanations={}) and the LLM-answered branch."""
+    out: List[PerVideoOut] = []
     for entry in per_video_chunks:
         chunks = entry["chunks"]
-        scores = [float(c.get("score", 0.0)) for c in chunks]
+        chunk_scores = [float(c.get("score", 0.0)) for c in chunks]
         spans = [
             TimestampSpan(
                 start=float(c.get("start", 0)),
@@ -246,29 +371,13 @@ def compare_videos(
             for i, c in enumerate(chunks)
         ]
         explanation = explanations.get(entry["video_id"]) or _extractive_explanation(chunks)
-        per_video_out.append(PerVideoOut(
+        out.append(PerVideoOut(
             video_id=entry["video_id"],
             filename=entry["filename"],
-            explanation=explanation or _extractive_explanation(chunks),
+            explanation=explanation,
             timestamps=spans,
-            confidence=_confidence_from_scores(scores),
+            confidence=_confidence_from_scores(chunk_scores),
             chunk_ids=chunk_ids,
-            top_score=max(scores) if scores else 0.0,
+            top_score=max(chunk_scores) if chunk_scores else 0.0,
         ))
-
-    if not overall_answer:
-        # Final guard: synthesise a one-liner from per-video confidences.
-        ranked = sorted(per_video_out, key=lambda x: x.confidence, reverse=True)
-        overall_answer = (
-            f"Across the {len(per_video_out)} videos, '{ranked[0].filename}' has the "
-            f"strongest evidence (confidence {ranked[0].confidence}). See per-video "
-            f"explanations for details."
-        )
-
-    return CompareOut(
-        question=payload.question,
-        answer=overall_answer,
-        per_video=per_video_out,
-        provider=provider,
-        latency_ms=int((time.time() - t0) * 1000),
-    )
+    return out
