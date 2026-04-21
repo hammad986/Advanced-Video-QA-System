@@ -239,24 +239,42 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
                 pass
 
         if api_key and api_key != "${GEMINI_API_KEY}":
+            import time as _time
             genai.configure(api_key=api_key.strip("'\" \n\r"))
             model_name = config.get("answer.gemini_model", "gemini-2.5-flash")
             model = genai.GenerativeModel(model_name)
-            resp = model.generate_content(
-                prompt,
-                generation_config={
-                    "temperature": 0.1,
-                    "max_output_tokens": config.get("answer.max_tokens", 256),
-                },
-            )
-            if resp and getattr(resp, "text", None):
-                logger.info(f"[LLM] Gemini ({model_name}) returned {len(resp.text)} chars")
-                return {
-                    "response": resp.text.strip(),
-                    "provider": "gemini",
-                    "status": f"Using Gemini ({model_name})",
-                }
-            logger.warning("[LLM] Gemini returned empty response; falling through.")
+
+            last_err = None
+            for attempt in range(3):
+                try:
+                    resp = model.generate_content(
+                        prompt,
+                        generation_config={
+                            "temperature": 0.1,
+                            "max_output_tokens": config.get("answer.max_tokens", 256),
+                        },
+                    )
+                    if resp and getattr(resp, "text", None):
+                        logger.info(f"[LLM] Gemini ({model_name}) returned {len(resp.text)} chars")
+                        return {
+                            "response": resp.text.strip(),
+                            "provider": "gemini",
+                            "status": f"Using Gemini ({model_name})",
+                        }
+                    logger.warning("[LLM] Gemini returned empty response; falling through.")
+                    break
+                except Exception as api_err:
+                    last_err = api_err
+                    msg = str(api_err)
+                    # Retry briefly on 429 rate limit, else break
+                    if "429" in msg or "quota" in msg.lower() or "rate" in msg.lower():
+                        wait = 2 ** attempt
+                        logger.warning(f"[LLM] Gemini rate-limited (attempt {attempt+1}/3). Sleeping {wait}s.")
+                        _time.sleep(wait)
+                        continue
+                    raise
+            if last_err:
+                logger.error(f"Gemini gave up after retries: {last_err}")
         else:
             logger.info("[LLM] GEMINI_API_KEY not set; skipping Gemini.")
     except Exception as e:
@@ -336,8 +354,9 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
 def _extractive_fallback(
     query: str,
     contexts: List[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
-    """Extract the first 2 sentences from the top chunk as a grounded answer."""
+) -> Optional[str]:
+    """Extract the first 2 sentences from the top chunk as a grounded answer,
+    using the same '(see [mm:ss - mm:ss])' citation format as LLM output."""
     if not contexts:
         return None
 
@@ -360,11 +379,16 @@ def _extractive_fallback(
         "returning extractive answer from top context chunk."
     )
 
-    response_text = (
-        f"Answer: {excerpt}\n"
-        f"Timestamp: {format_time_range(start, end)}"
-    )
-    return response_text
+    return f"{excerpt} (see {format_time_range(start, end)})"
+
+
+_CITATION_RE = re.compile(r"\(see\s*\[\d{1,3}:\d{2}\s*-\s*\d{1,3}:\d{2}\]\)")
+
+def _has_citation(answer: str) -> bool:
+    """Check that the answer ends with a valid '(see [mm:ss - mm:ss])' citation."""
+    if not answer:
+        return False
+    return bool(_CITATION_RE.search(answer))
 
 # ──────────────────────────────────────────────────────
 # Main Entry Point
@@ -446,8 +470,9 @@ def generate_answer(
     else:
         logger.warning("[LLM] All AI services failed or generated None.")
 
-    # If LLM failed or answer is empty/too short/"not found", use extractive fallback
+    # Decide fate of the LLM response.
     llm_failed = (not answer) or (len(answer.strip()) < 5)
+
     if llm_failed:
         extractive = _extractive_fallback(query, contexts)
         if extractive:
@@ -457,8 +482,15 @@ def generate_answer(
         else:
             answer = "Not found in video."
     elif _is_not_found(answer):
-        # LLM explicitly said "Not found" — keep its decision, don't paper over it
+        # LLM explicitly said "Not found" — keep its decision
         answer = "Not found in video."
+    elif not _has_citation(answer):
+        # LLM answered but did not follow citation contract —
+        # append a citation derived from the top chunk so the UI still has
+        # a verifiable timestamp, and flag this in the status.
+        logger.warning("[LLM] Answer missing '(see [mm:ss - mm:ss])' citation — appending from top chunk.")
+        answer = f"{answer.rstrip('. ')}. (see {timestamp})"
+        status_msg = f"{status_msg} | citation appended"
 
     result = {
         "answer":            answer,

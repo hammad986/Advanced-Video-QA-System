@@ -71,3 +71,11 @@ streamlit run video_qa/app.py --server.port 5000 --server.address 0.0.0.0
 - `video_qa/app.py` manually adds the project root to `sys.path` at startup so `config_loader` can be found
 - Streamlit config in `.streamlit/config.toml` sets port 5000, address 0.0.0.0, CORS/XSRF disabled (required for Replit proxy)
 - The speech model is set to `tiny` in config.yaml to avoid OOM errors on CPU-only machines
+
+## Answer Generation
+
+- **Provider priority**: Gemini → Ollama (local) → OpenAI → HuggingFace → extractive fallback
+- **Gemini model**: `gemini-2.5-flash` with `temperature=0.1`, retries up to 3× on 429 rate limits with exponential backoff
+- **Prompt**: Passes the top-2 retrieved chunks with their `[mm:ss - mm:ss]` timestamps and strict rules (answer only from context, cite timestamp, say "Not found in video." if unknown)
+- **Retrieval scoping**: Strict — if `active_video_id` is provided and matches 0 chunks, an empty result is returned (no silent global fallback). When no `active_video_id` is provided, global retrieval is used.
+- **Extractive fallback**: Invoked from `generate_answer()` when the LLM returns empty/too-short output — returns top-chunk excerpt with its timestamp.
