@@ -1,0 +1,14 @@
+{
+  "description": "Small 9-query sample used to fit within Gemini free-tier rate limits for CI-style runs. Same schema as eval_dataset.json.",
+  "queries": [
+    { "id": "q01", "query": "What is machine learning?",                    "expected_keywords": ["learn"],                     "out_of_scope": false },
+    { "id": "q03", "query": "What are the two main types of machine learning?", "expected_keywords": ["supervised", "unsupervised"], "out_of_scope": false },
+    { "id": "q05", "query": "What is clustering?",                          "expected_keywords": ["unsupervised"],              "out_of_scope": false },
+    { "id": "q06", "query": "What does regularization do to the parameters?", "expected_keywords": ["regulariz"],                "out_of_scope": false },
+    { "id": "q08", "query": "What happens if the learning rate is too small?", "expected_keywords": ["learning rate"],            "out_of_scope": false },
+    { "id": "q10", "query": "How should you begin writing an IELTS chart description?", "expected_keywords": ["chart"],          "out_of_scope": false },
+    { "id": "oos01", "query": "What is the recipe for lasagna?",             "expected_keywords": [],                            "out_of_scope": true  },
+    { "id": "oos02", "query": "Who won the 2022 FIFA World Cup final?",      "expected_keywords": [],                            "out_of_scope": true  },
+    { "id": "oos03", "query": "How do I refinance my mortgage?",             "expected_keywords": [],                            "out_of_scope": true  }
+  ]
+}

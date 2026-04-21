@@ -79,3 +79,26 @@ streamlit run video_qa/app.py --server.port 5000 --server.address 0.0.0.0
 - **Prompt**: Passes the top-2 retrieved chunks with their `[mm:ss - mm:ss]` timestamps and strict rules (answer only from context, cite timestamp, say "Not found in video." if unknown)
 - **Retrieval scoping**: Strict — if `active_video_id` is provided and matches 0 chunks, an empty result is returned (no silent global fallback). When no `active_video_id` is provided, global retrieval is used.
 - **Extractive fallback**: Invoked from `generate_answer()` when the LLM returns empty/too-short output — returns top-chunk excerpt with its timestamp.
+- **Gemini daily-quota kill-switch**: Once a Gemini 429 with the "generate_content_free_tier_requests" daily quota marker is observed, a module-level flag disables Gemini for the rest of the process so subsequent queries do not pay retry/backoff time on unrecoverable errors.
+
+## SaaS-Grade Extensions (this branch)
+
+- `video_qa/cache.py` — thread-safe LRU query cache (256 entries) keyed on `(normalized_query, video_id)`. Verified 9/9 cache hits on second pass.
+- `video_qa/temporal_neighbors.py` — pulls prev/next chunks of the top-1 retrieved chunk from FAISS metadata grouped by `video_id`; neighbour text is appended to the LLM prompt for context continuity.
+- `video_qa/hallucination_detector.py` — deterministic post-check. Computes cosine similarity between answer embedding and concatenated-context embedding plus keyword overlap; classifies SUPPORTED / PARTIAL / UNSUPPORTED. PARTIAL caps confidence ≤ 70, UNSUPPORTED caps ≤ 35.
+- **Out-of-scope (OOS) gate** (in `pipeline.ask`): after retrieval, refuses immediately with `status="UNSUPPORTED"`, `confidence=10`, `provider="oos_gate"` when the **union of original + rewritten query content words** shares **zero** tokens with the top-1 chunk AND the top retrieval score is below `0.85`. Needed because BGE cosine scores stay in ~0.76–0.81 even for totally unrelated queries, so a score threshold alone cannot separate scope.
+- **Production response contract** from `pipeline.ask`:
+  `{answer, confidence, confidence_label, status, timestamp, chunk_ids, provider, contexts, support, neighbors, cached}`.
+- `evaluation/run_eval.py` + `evaluation/eval_dataset.json` (18 queries) / `evaluation/eval_dataset_small.json` (9 queries, fits Gemini free-tier daily quota). Metrics: retrieval_precision, answer_accuracy, hallucination_rate, refusal_correctness, mean_confidence, cache_hits, mean_latency.
+
+### Last eval results (`evaluation/last_report.json`)
+
+| metric | value |
+|---|---|
+| retrieval_precision | 1.0 |
+| answer_accuracy | 0.67 |
+| hallucination_rate | 0.0 |
+| refusal_correctness | 1.0 |
+| mean_confidence (in-scope) | 92.5 |
+| cache_hits_second_pass | 9/9 |
+| mean_latency | 4.0 s |

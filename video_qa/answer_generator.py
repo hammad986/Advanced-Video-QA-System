@@ -23,6 +23,22 @@ CONFIG = load_config()
 
 logger = get_logger(__name__)
 
+# Session-level kill-switch tripped when we detect the Gemini daily/project quota
+# is exhausted. Further calls short-circuit to the next provider instead of
+# paying 3×backoff seconds per query for retries that cannot possibly succeed
+# until the per-day quota window resets.
+_GEMINI_DAILY_EXHAUSTED = False
+
+
+def _looks_like_daily_quota(err_msg: str) -> bool:
+    m = err_msg.lower()
+    return (
+        "perdayper" in m.replace(" ", "")
+        or "requests per day" in m
+        or "free_tier_requests" in m
+        or "generate_content_free_tier_requests" in m
+    )
+
 # ──────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────
@@ -226,7 +242,10 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
     import os
 
     # 1. Try Gemini FIRST (preferred cloud provider)
+    global _GEMINI_DAILY_EXHAUSTED
     try:
+        if _GEMINI_DAILY_EXHAUSTED:
+            raise RuntimeError("gemini_daily_quota_exhausted_this_session")
         import google.generativeai as genai
 
         api_key = os.environ.get("GEMINI_API_KEY") or config.get("answer.gemini_api_key", "")
@@ -266,7 +285,13 @@ def generate_with_fallback(prompt: str) -> Dict[str, str]:
                 except Exception as api_err:
                     last_err = api_err
                     msg = str(api_err)
-                    # Retry briefly on 429 rate limit, else break
+                    # If daily/project quota exhausted, trip the session kill-switch
+                    # so subsequent queries do not waste retry backoff on unrecoverable calls.
+                    if _looks_like_daily_quota(msg):
+                        _GEMINI_DAILY_EXHAUSTED = True
+                        logger.warning("[LLM] Gemini daily free-tier quota exhausted; disabling Gemini for this session.")
+                        break
+                    # Retry briefly on per-minute 429 rate limit, else break
                     if "429" in msg or "quota" in msg.lower() or "rate" in msg.lower():
                         wait = 2 ** attempt
                         logger.warning(f"[LLM] Gemini rate-limited (attempt {attempt+1}/3). Sleeping {wait}s.")

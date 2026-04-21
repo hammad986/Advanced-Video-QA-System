@@ -270,21 +270,51 @@ class VideoQAPipeline:
         
         return success_count
     
-    def ask(self, query: str, active_video_id: Optional[str] = None) -> Dict[str, Any]:
+    def ask(
+        self,
+        query: str,
+        active_video_id: Optional[str] = None,
+        *,
+        use_cache: bool = True,
+        include_neighbors: bool = True,
+    ) -> Dict[str, Any]:
         """
         Answer a question about processed videos.
 
-        HYBRID ROUTING:
-          • Summary / overview questions  →  returns stored lecture summary instantly
-          • Factual / evidence questions  →  standard RAG pipeline
+        Pipeline stages:
+          1. Cache lookup                 (skips LLM on repeat queries)
+          2. Summary routing              (instant for summary-style queries)
+          3. Query rewrite + retrieval    (top-5 FAISS + optional rerank)
+          4. Temporal neighbour expansion (prev/next chunks for context)
+          5. Answer generation            (Gemini → fallback chain)
+          6. Confidence scoring           (FAISS + overlap + agreement)
+          7. Hallucination post-check     (SUPPORTED / PARTIAL / UNSUPPORTED)
+          8. Final response assembly      (answer, confidence, status, ts, chunk_ids)
 
-        Args:
-            query:           User question
-            active_video_id: Scopes retrieval to a specific video
-
-        Returns:
-            Dictionary with answer, timestamp, contexts, and metadata
+        Returns a dict with the production response contract:
+            {
+              "answer":     str,
+              "confidence": int 0-100,
+              "confidence_label": "High"|"Medium"|"Low",
+              "status":     "SUPPORTED"|"PARTIAL"|"UNSUPPORTED",
+              "timestamp":  "[mm:ss - mm:ss]",
+              "chunk_ids":  ["video_id:chunk_id", ...],
+              "provider":   "gemini"|"extractive"|...,
+              "contexts":   [ {text, score, start, end, video_id, chunk_id}, ... ],
+              "support":    { semantic_similarity, keyword_overlap, support_score },
+              "cached":     bool,
+            }
         """
+        # ── Cache lookup ─────────────────────────────────────────────────────
+        from .cache import get_cache
+        cache = get_cache()
+        if use_cache:
+            hit = cache.get(query, active_video_id)
+            if hit is not None:
+                hit["cached"] = True
+                logger.info(f"[CACHE HIT] query='{query[:50]}' vid={active_video_id}")
+                return hit
+
         logger.info("="*60)
         logger.info(f"QUERY: {query}")
         logger.info("="*60)
@@ -293,16 +323,26 @@ class VideoQAPipeline:
         summary_result = route_summary_query(query, active_video_id)
         if summary_result is not None:
             logger.info("[Pipeline] Returning pre-computed lecture summary.")
+            summary_result.setdefault("status", "SUPPORTED")
+            summary_result.setdefault("chunk_ids", [])
+            summary_result["cached"] = False
+            if use_cache:
+                cache.set(query, active_video_id, summary_result)
             return summary_result
 
         # ── PATH B: Factual questions — standard RAG ──────────────────────────
-        # Check if retrieval is available
         if not self.retriever.is_available():
             logger.error("Vector index not available. Please process videos first.")
             return {
                 "answer": "Question cannot be answered from this video.",
                 "timestamp": None,
-                "error": "No videos processed"
+                "confidence": 0,
+                "confidence_label": "Low",
+                "status": "UNSUPPORTED",
+                "chunk_ids": [],
+                "contexts": [],
+                "error": "No videos processed",
+                "cached": False,
             }
 
         # Stage 5A: Query Rewrite
@@ -316,10 +356,14 @@ class VideoQAPipeline:
 
         if search_query != query:
             logger.info(f"Using search query: '{search_query}' (via {provider})")
-            # FIX: Re-check summary route with rewritten query strictly
             summary_result = route_summary_query(search_query, active_video_id)
             if summary_result is not None:
                 logger.info("[Pipeline] Returning pre-computed lecture summary (re-routed after rewrite).")
+                summary_result.setdefault("status", "SUPPORTED")
+                summary_result.setdefault("chunk_ids", [])
+                summary_result["cached"] = False
+                if use_cache:
+                    cache.set(query, active_video_id, summary_result)
                 return summary_result
         else:
             logger.info("Using original query for search.")
@@ -330,34 +374,148 @@ class VideoQAPipeline:
 
         if not retrieved:
             logger.warning("No relevant passages found")
-            return {
+            out = {
                 "answer": "Question cannot be answered from this video.",
                 "timestamp": None,
-                "contexts": []
+                "confidence": 0,
+                "confidence_label": "Low",
+                "status": "UNSUPPORTED",
+                "chunk_ids": [],
+                "contexts": [],
+                "cached": False,
             }
+            if use_cache:
+                cache.set(query, active_video_id, out)
+            return out
 
         logger.info(f"Retrieved {len(retrieved)} passages")
 
-        # Stage 6: Re-Ranking — keep ALL 5 for confidence scoring, use top-2 for LLM prompt
+        # Stage 5C: Out-of-scope gate
+        # BGE embeddings return superficially high cosine scores even for totally
+        # unrelated queries (e.g. "lasagna" → 0.77 against ML lectures). A single
+        # retrieval-score threshold therefore cannot separate in-scope from OOS.
+        # Instead, require at least one content word shared between the query and
+        # the top-1 retrieved chunk. If none exists, refuse immediately.
+        try:
+            from .hallucination_detector import _content_words
+            # Use the union of original and rewritten query tokens so a well-formed
+            # rewrite (e.g. "regularization" → "L2 weight decay") cannot trigger a
+            # false OOS refusal just because the user's raw wording was brief.
+            q_words = set(_content_words(query)) | set(_content_words(search_query))
+            top_text = (retrieved[0].get("text") or "")
+            top_words = set(_content_words(top_text))
+            overlap = q_words & top_words
+            top_score = float(retrieved[0].get("score", 0.0))
+            # Refuse when the user's question shares zero content words with the
+            # best chunk AND the retrieval score is not decisively high.
+            if q_words and not overlap and top_score < 0.85:
+                logger.warning(
+                    f"[OOS GATE] Query has no content-word overlap with top chunk "
+                    f"(top_score={top_score:.3f}). Refusing."
+                )
+                out = {
+                    "answer": "Not found in video.",
+                    "timestamp": None,
+                    "confidence": 10,
+                    "confidence_label": "Low",
+                    "status": "UNSUPPORTED",
+                    "chunk_ids": [],
+                    "contexts": [],
+                    "support": {"status": "UNSUPPORTED", "semantic_similarity": 0.0,
+                                "keyword_overlap": 0.0, "support_score": 0.0},
+                    "neighbors": [],
+                    "provider": "oos_gate",
+                    "cached": False,
+                }
+                if use_cache:
+                    cache.set(query, active_video_id, out)
+                return out
+        except Exception as e:
+            logger.warning(f"[OOS GATE] check skipped: {e}")
+
+        # Stage 6: Re-Ranking
         logger.info("\n[RE-RANKING] Re-ranking passages...")
         reranked = self.reranker.rerank(query, retrieved)
-        # Top-2 go to LLM prompt (avoids OOM); all go to confidence scorer and UI
         prompt_contexts = reranked[:2]
-        all_contexts    = reranked          # up to top-5
+        all_contexts    = reranked
 
-        logger.info(f"Re-ranked {len(reranked)} passages (using top-2 for LLM, all for confidence)")
+        # Stage 6B: Temporal neighbour expansion (prev/next chunks)
+        neighbors: List[Dict[str, Any]] = []
+        if include_neighbors:
+            try:
+                from .temporal_neighbors import get_neighbors
+                # Neighbours only for the top-1 chunk to keep prompt small
+                if prompt_contexts:
+                    nb = get_neighbors(prompt_contexts[0], window=1)
+                    neighbors = nb["previous"] + nb["next"]
+                    logger.info(f"[TEMPORAL] Added {len(neighbors)} neighbour chunks for context.")
+            except Exception as e:
+                logger.warning(f"[TEMPORAL] neighbour expansion failed: {e}")
 
-        # Stage 7: Answer Generation
+        # Stage 7: Answer Generation — include neighbours alongside top-2 for richer context
         logger.info("\n[ANSWER GENERATION] Generating answer...")
-        result = self.answer_generator.generate(query, prompt_contexts, all_contexts=all_contexts)
+        llm_contexts = list(prompt_contexts)
+        # Append neighbours at the end so retrieved top-2 remain first (prompt priority)
+        for n in neighbors:
+            llm_contexts.append({
+                "text":     n.get("text", ""),
+                "score":    0.0,
+                "start":    n.get("start", 0.0),
+                "end":      n.get("end", 0.0),
+                "video_id": n.get("video_id"),
+                "chunk_id": n.get("chunk_id"),
+            })
+        result = self.answer_generator.generate(query, llm_contexts, all_contexts=all_contexts)
 
-        # Stage 8 & 9: Verification and Output
+        # Stage 8: Hallucination post-check
+        try:
+            from .hallucination_detector import check_answer
+            support = check_answer(result.get("answer", ""), all_contexts)
+        except Exception as e:
+            logger.warning(f"[HALLUCINATION] post-check failed: {e}")
+            support = {"status": "PARTIAL", "semantic_similarity": 0.0,
+                       "keyword_overlap": 0.0, "support_score": 0.0}
+
+        # Stage 9: Final response assembly
+        chunk_ids = [
+            f"{c.get('video_id')}:{c.get('chunk_id')}"
+            for c in all_contexts
+            if c.get("video_id") is not None and c.get("chunk_id") is not None
+        ]
+
+        # If the hallucination check says UNSUPPORTED, cap the displayed confidence
+        # so the UI cannot show "High confidence" for an unsupported answer.
+        if support["status"] == "UNSUPPORTED":
+            result["confidence"] = min(int(result.get("confidence", 0)), 35)
+            result["confidence_label"] = "Low"
+        elif support["status"] == "PARTIAL":
+            result["confidence"] = min(int(result.get("confidence", 0)), 70)
+            if result["confidence"] < 40:
+                result["confidence_label"] = "Low"
+            else:
+                result["confidence_label"] = "Medium"
+
+        result["status"]    = support["status"]
+        result["support"]   = support
+        result["chunk_ids"] = chunk_ids
+        result["neighbors"] = [
+            {"video_id": n.get("video_id"), "chunk_id": n.get("chunk_id"),
+             "relation": n.get("relation"), "start": n.get("start"),
+             "end": n.get("end"), "text": (n.get("text") or "")[:200]}
+            for n in neighbors
+        ]
+        result["cached"] = False
+
         logger.info("\n[OUTPUT]")
-        logger.info(f"Answer: {result.get('answer')}")
-        logger.info(f"Timestamp: {result.get('timestamp')}")
+        logger.info(f"Answer:     {result.get('answer')}")
+        logger.info(f"Timestamp:  {result.get('timestamp')}")
         logger.info(f"Confidence: {result.get('confidence')}% ({result.get('confidence_label')})")
-        logger.info(f"Verified: {result.get('verified', False)}")
+        logger.info(f"Status:     {result.get('status')} "
+                    f"(sim={support['semantic_similarity']}, overlap={support['keyword_overlap']})")
+        logger.info(f"ChunkIDs:   {chunk_ids}")
 
+        if use_cache:
+            cache.set(query, active_video_id, result)
         return result
 
     

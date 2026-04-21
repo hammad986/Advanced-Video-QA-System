@@ -1,0 +1,113 @@
+{
+  "description": "Video-QA evaluation dataset. 15 grounded queries + 3 adversarial 'not-in-video' queries. 'expected_keywords' must appear in the returned answer OR the top retrieved chunk for the query to count as answered. 'out_of_scope: true' means the system is expected to say 'Not found in video.' and/or produce status=UNSUPPORTED.",
+  "queries": [
+    {
+      "id": "q01",
+      "query": "What is machine learning?",
+      "expected_keywords": ["learn", "computer", "program"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q02",
+      "query": "Who is associated with the early checkers-playing program?",
+      "expected_keywords": ["samuel"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q03",
+      "query": "What are the two main types of machine learning?",
+      "expected_keywords": ["supervised", "unsupervised"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q04",
+      "query": "What is supervised learning?",
+      "expected_keywords": ["input", "output", "label"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q05",
+      "query": "What is clustering?",
+      "expected_keywords": ["unsupervised", "group"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q06",
+      "query": "What does regularization try to do to the parameters?",
+      "expected_keywords": ["regulariz", "parameter", "small"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q07",
+      "query": "Why is feature scaling useful for gradient descent?",
+      "expected_keywords": ["scale", "feature", "gradient"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q08",
+      "query": "What happens if the learning rate is too small?",
+      "expected_keywords": ["learning rate", "slow"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q09",
+      "query": "What is polynomial regression?",
+      "expected_keywords": ["polynomial", "regression"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q10",
+      "query": "How should you begin writing an IELTS chart description?",
+      "expected_keywords": ["graph", "chart"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q11",
+      "query": "What should the body of an IELTS chart paragraph contain?",
+      "expected_keywords": ["body", "trend"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q12",
+      "query": "Is data science still worth pursuing?",
+      "expected_keywords": ["data", "science"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q13",
+      "query": "What skills are needed to become a data scientist?",
+      "expected_keywords": ["skill", "data"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q14",
+      "query": "Is it worth becoming a data analyst in 2026?",
+      "expected_keywords": ["data", "analyst"],
+      "out_of_scope": false
+    },
+    {
+      "id": "q15",
+      "query": "What is linear regression?",
+      "expected_keywords": ["linear", "regression"],
+      "out_of_scope": false
+    },
+    {
+      "id": "oos01",
+      "query": "What is the recipe for making lasagna?",
+      "expected_keywords": [],
+      "out_of_scope": true
+    },
+    {
+      "id": "oos02",
+      "query": "Who won the 2022 FIFA World Cup final?",
+      "expected_keywords": [],
+      "out_of_scope": true
+    },
+    {
+      "id": "oos03",
+      "query": "How do I refinance my mortgage?",
+      "expected_keywords": [],
+      "out_of_scope": true
+    }
+  ]
+}

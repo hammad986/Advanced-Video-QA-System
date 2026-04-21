@@ -53,41 +53,52 @@ def call_gemini(prompt: str) -> str:
     if not api_key:
         raise ValueError("GEMINI_API_KEY not set")
         
-    # Updated API contract: GenAI client new style
-    # The tests mock `video_qa.query_rewriter.genai.Client` with a `.models.generate_content` method.
-    client = genai.Client(api_key=api_key.strip("'\" "))
-    response = client.models.generate_content(prompt)
-    if response and hasattr(response, 'text') and response.text:
+    # Use the installed `google.generativeai` (classic) API: configure + GenerativeModel.
+    # Tests patch `video_qa.query_rewriter.genai` so either API shape works; prefer classic.
+    if hasattr(genai, "Client"):
+        client = genai.Client(api_key=api_key.strip("'\" "))
+        response = client.models.generate_content(prompt)
+    else:
+        genai.configure(api_key=api_key.strip("'\" "))
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        response = model.generate_content(prompt)
+    if response and hasattr(response, "text") and response.text:
         return response.text.strip()
     return ""
 
-def rewrite_query(question: str, force: bool = False) -> str:
+def rewrite_query(question: str, force: bool = False) -> Tuple[str, str]:
+    """Rewrite a user question for better retrieval.
+
+    Returns a ``(rewritten_text, provider)`` tuple.
+      - ``provider`` is ``"gemini"`` on a successful LLM rewrite, ``"original"`` otherwise.
+
+    Callers that only want the rewritten string should pass through
+    ``video_qa.pipeline.ask`` (which accepts either shape) or unpack the tuple.
+    """
     if not isinstance(question, str) or not question.strip():
-        return question
+        return (question, "original")
 
     original_query = question.strip()
 
     # Skip very long queries (degrades to full keyword retrieval path)
     if not force and len(original_query.split()) > MAX_WORD_COUNT:
         logger.info("[QUERY REWRITE] Query too long, skipping rewrite.")
-        return original_query
+        return (original_query, "original")
 
-    prompt = f"Rewrite this question clearly. Return ONLY the rewritten question text without any extra conversational filler or options:\n{original_query}"
+    prompt = (
+        "Rewrite this question clearly. Return ONLY the rewritten question "
+        f"text without any extra conversational filler or options:\n{original_query}"
+    )
     logger.info(f"[QUERY REWRITE] Initiating rewrite cascade for query {original_query!r}")
 
     # 1. TRY GEMINI FIRST
     try:
         rewritten = call_gemini(prompt)
-        print("[DEBUG] Gemini rewrite:", rewritten)
-
         if rewritten and len(rewritten.strip()) > 5:
-            return rewritten.strip()
-
+            return (rewritten.strip(), "gemini")
     except Exception as e:
-        print("[ERROR] Gemini failed:", e)
         logger.warning(f"[QUERY REWRITE] Gemini failed: {e}")
-        return original_query
 
     # FINAL FALLBACK
     logger.warning("[QUERY REWRITE] All API providers failed or returned empty. Returning original query.")
-    return original_query
+    return (original_query, "original")

@@ -1,0 +1,248 @@
+{
+  "metrics": {
+    "n_total": 9,
+    "n_in_scope": 6,
+    "n_out_of_scope": 3,
+    "retrieval_precision": 1.0,
+    "answer_accuracy": 0.6667,
+    "hallucination_rate": 0.0,
+    "supported_rate": 1.0,
+    "refusal_correctness": 1.0,
+    "mean_confidence": 92.5,
+    "mean_support_score": 0.9453,
+    "mean_latency_s": 3.952,
+    "cache_hits_second_pass": 9,
+    "second_pass_latency_s": 0.0
+  },
+  "per_query": [
+    {
+      "id": "q01",
+      "query": "What is machine learning?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "learn"
+      ],
+      "answer": "If you already have a solid background in Python and SQL, you can get a good grasp of data pre-processing and visualization in a month or two. Next up, you'll need to get a handle on machine learning fundamentals. (see [03:10 - 04:55])",
+      "provider": "extractive",
+      "confidence": 92,
+      "status": "SUPPORTED",
+      "timestamp": "[03:10 - 04:55]",
+      "chunk_ids": [
+        "9R3X0JoCLyU:2",
+        "01_index:0",
+        "01_index:2",
+        "01_index:1",
+        "2Iyperai22s:11"
+      ],
+      "semantic_sim": 0.9372,
+      "keyword_overlap": 1.0,
+      "support_score": 0.9623,
+      "latency_s": 28.006,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": true,
+      "retrieval_precision": true
+    },
+    {
+      "id": "q03",
+      "query": "What are the two main types of machine learning?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "supervised",
+        "unsupervised"
+      ],
+      "answer": "The point of these quiz questions isn't to see you can get them all correct in the first try. These questions are here just to help you practice the concept you're learning. (see [01:59 - 04:00])",
+      "provider": "extractive",
+      "confidence": 92,
+      "status": "SUPPORTED",
+      "timestamp": "[01:59 - 04:00]",
+      "chunk_ids": [
+        "01_index:1",
+        "9R3X0JoCLyU:2",
+        "06_index:6",
+        "01_index:2",
+        "2Iyperai22s:11"
+      ],
+      "semantic_sim": 0.8402,
+      "keyword_overlap": 1.0,
+      "support_score": 0.9041,
+      "latency_s": 1.148,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": false,
+      "retrieval_precision": true
+    },
+    {
+      "id": "q05",
+      "query": "What is clustering?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "unsupervised"
+      ],
+      "answer": "last video. And so you can approach that using a clustering algorithm to group news articles together, so that would use unsupervised learning. (see [02:22 - 03:38])",
+      "provider": "extractive",
+      "confidence": 91,
+      "status": "SUPPORTED",
+      "timestamp": "[02:22 - 03:38]",
+      "chunk_ids": [
+        "05_index:1",
+        "05_index:0",
+        "9R3X0JoCLyU:2",
+        "01_index:2",
+        "2Iyperai22s:1"
+      ],
+      "semantic_sim": 0.9284,
+      "keyword_overlap": 1.0,
+      "support_score": 0.9571,
+      "latency_s": 1.519,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": true,
+      "retrieval_precision": true
+    },
+    {
+      "id": "q06",
+      "query": "What does regularization do to the parameters?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "regulariz"
+      ],
+      "answer": "Now, if you were to eliminate some of these features, say if you were to eliminate the feature x4, that corresponds to setting this parameter to 0. So setting a parameter to 0 is equivalent to eliminating a feature, which is what we saw on the previous slide. (see [04:00 - 04:59])",
+      "provider": "extractive",
+      "confidence": 95,
+      "status": "SUPPORTED",
+      "timestamp": "[04:00 - 04:59]",
+      "chunk_ids": [
+        "tmp_to2iyq8:9",
+        "tmp_qgffm9t:9",
+        "tmpwzg9jxgm:9",
+        "tmpwvmtpqg4:9",
+        "tmpw0gkwhsr:9"
+      ],
+      "semantic_sim": 0.915,
+      "keyword_overlap": 1.0,
+      "support_score": 0.949,
+      "latency_s": 1.432,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": false,
+      "retrieval_precision": true
+    },
+    {
+      "id": "q08",
+      "query": "What happens if the learning rate is too small?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "learning rate"
+      ],
+      "answer": "Your learning algorithm will run much better with an appropriate choice of learning rate. They've been useful, it will run very slowly, and it is too large, it may not even converge. (see [00:01 - 01:51])",
+      "provider": "extractive",
+      "confidence": 92,
+      "status": "SUPPORTED",
+      "timestamp": "[00:01 - 01:51]",
+      "chunk_ids": [
+        "tmpr1ufd5xl:0",
+        "tmp_to2iyq8:5",
+        "tmp_qgffm9t:5",
+        "tmpwzg9jxgm:5",
+        "tmpwvmtpqg4:5"
+      ],
+      "semantic_sim": 0.9337,
+      "keyword_overlap": 1.0,
+      "support_score": 0.9602,
+      "latency_s": 0.898,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": true,
+      "retrieval_precision": true
+    },
+    {
+      "id": "q10",
+      "query": "How should you begin writing an IELTS chart description?",
+      "out_of_scope": false,
+      "expected_keywords": [
+        "chart"
+      ],
+      "answer": "Here, you need to begin with one of the two sentences. Let's state that what the graph, the table, or the chart is about, then you need to paraphrase the title of the graph. (see [00:28 - 00:45])",
+      "provider": "extractive",
+      "confidence": 93,
+      "status": "SUPPORTED",
+      "timestamp": "[00:28 - 00:45]",
+      "chunk_ids": [
+        "Z-G3XHfB1Jc:1",
+        "Z-G3XHfB1Jc:11",
+        "Z-G3XHfB1Jc:3",
+        "Z-G3XHfB1Jc:12",
+        "Z-G3XHfB1Jc:16"
+      ],
+      "semantic_sim": 0.8986,
+      "keyword_overlap": 1.0,
+      "support_score": 0.9391,
+      "latency_s": 1.326,
+      "refused": false,
+      "refusal_correct": null,
+      "answer_accurate": true,
+      "retrieval_precision": true
+    },
+    {
+      "id": "oos01",
+      "query": "What is the recipe for lasagna?",
+      "out_of_scope": true,
+      "expected_keywords": [],
+      "answer": "Not found in video.",
+      "provider": "oos_gate",
+      "confidence": 10,
+      "status": "UNSUPPORTED",
+      "timestamp": null,
+      "chunk_ids": [],
+      "semantic_sim": 0.0,
+      "keyword_overlap": 0.0,
+      "support_score": 0.0,
+      "latency_s": 0.383,
+      "refused": true,
+      "refusal_correct": true,
+      "answer_accurate": null,
+      "retrieval_precision": null
+    },
+    {
+      "id": "oos02",
+      "query": "Who won the 2022 FIFA World Cup final?",
+      "out_of_scope": true,
+      "expected_keywords": [],
+      "answer": "Not found in video.",
+      "provider": "oos_gate",
+      "confidence": 10,
+      "status": "UNSUPPORTED",
+      "timestamp": null,
+      "chunk_ids": [],
+      "semantic_sim": 0.0,
+      "keyword_overlap": 0.0,
+      "support_score": 0.0,
+      "latency_s": 0.437,
+      "refused": true,
+      "refusal_correct": true,
+      "answer_accurate": null,
+      "retrieval_precision": null
+    },
+    {
+      "id": "oos03",
+      "query": "How do I refinance my mortgage?",
+      "out_of_scope": true,
+      "expected_keywords": [],
+      "answer": "Not found in video.",
+      "provider": "oos_gate",
+      "confidence": 10,
+      "status": "UNSUPPORTED",
+      "timestamp": null,
+      "chunk_ids": [],
+      "semantic_sim": 0.0,
+      "keyword_overlap": 0.0,
+      "support_score": 0.0,
+      "latency_s": 0.421,
+      "refused": true,
+      "refusal_correct": true,
+      "answer_accurate": null,
+      "retrieval_precision": null
+    }
+  ]
+}
