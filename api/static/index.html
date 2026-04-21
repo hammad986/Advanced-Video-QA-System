@@ -3,86 +3,175 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Multi-Video Compare · Video-QA</title>
+<title>Video-QA</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%234f9eff'/%3E%3Cpolygon points='6,4 6,12 12,8' fill='%23fff'/%3E%3C/svg%3E" />
 <style>
-  :root { --bg:#0f1419; --panel:#1a2028; --line:#2a3340; --fg:#e8edf2;
-          --mut:#8a96a3; --acc:#4f9eff; --warn:#ffb454; --err:#ff6b6b;
-          --ok:#5fcf80; }
+  :root {
+    --bg:#0b0f14; --panel:#141b24; --panel2:#0d1218; --line:#22303f;
+    --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; --acc-dim:#2a4a78;
+    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80;
+    --best:#ffd166;
+  }
   * { box-sizing: border-box; }
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
-         system-ui,sans-serif; background:var(--bg); color:var(--fg); }
+         system-ui,sans-serif; background:var(--bg); color:var(--fg);
+         font-size:14px; line-height:1.45; }
   header { padding:14px 22px; border-bottom:1px solid var(--line);
-           display:flex; align-items:center; gap:18px; }
-  header h1 { font-size:16px; margin:0; font-weight:600; }
-  nav { display:flex; gap:6px; }
-  nav .tab { padding:6px 12px; border-radius:6px; cursor:pointer;
-             font-size:13px; color:var(--mut); }
+           display:flex; align-items:center; gap:18px; position:sticky;
+           top:0; background:var(--bg); z-index:10; }
+  header h1 { font-size:16px; margin:0; font-weight:700;
+              letter-spacing:-0.01em; }
+  nav { display:flex; gap:4px; }
+  nav .tab { padding:7px 14px; border-radius:7px; cursor:pointer;
+             font-size:13px; color:var(--mut); user-select:none;
+             transition:background .15s, color .15s; }
+  nav .tab:hover { color:var(--fg); }
   nav .tab.active { background:var(--panel); color:var(--fg); }
-  nav .tab.disabled { opacity:.4; cursor:not-allowed; }
   main { max-width:1100px; margin:0 auto; padding:24px; }
   .card { background:var(--panel); border:1px solid var(--line);
           border-radius:10px; padding:18px; margin-bottom:18px; }
   .card h2 { margin:0 0 12px; font-size:15px; font-weight:600; }
+  .card .sub { font-size:12px; color:var(--mut); margin:-6px 0 14px; }
   label { display:block; font-size:12px; color:var(--mut);
-          margin:10px 0 4px; }
-  input, textarea, button {
+          margin:10px 0 4px; font-weight:500; }
+  input, textarea, select, button {
     font-family:inherit; font-size:14px; color:var(--fg);
-    background:#0d1218; border:1px solid var(--line);
+    background:var(--panel2); border:1px solid var(--line);
     border-radius:6px; padding:10px 12px; width:100%; outline:none;
   }
-  input:focus, textarea:focus { border-color:var(--acc); }
+  input:focus, textarea:focus, select:focus { border-color:var(--acc); }
   textarea { resize:vertical; min-height:70px; }
   button { background:var(--acc); border-color:var(--acc); color:#fff;
-           cursor:pointer; font-weight:600; }
+           cursor:pointer; font-weight:600;
+           transition:filter .15s, opacity .15s; }
+  button:hover:not(:disabled) { filter:brightness(1.1); }
   button:disabled { opacity:.5; cursor:not-allowed; }
   button.ghost { background:transparent; color:var(--mut);
                  border-color:var(--line); }
-  .row { display:flex; gap:10px; }
-  .row > * { flex:1; }
-  .vid-list { max-height:260px; overflow-y:auto; border:1px solid var(--line);
-              border-radius:6px; padding:6px; }
+  button.ghost:hover:not(:disabled) { color:var(--fg); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > * { flex:1; min-width:0; }
+  .vid-list { max-height:280px; overflow-y:auto; border:1px solid var(--line);
+              border-radius:6px; padding:6px; background:var(--panel2); }
   .vid-row { display:flex; gap:10px; align-items:center;
-             padding:8px 10px; border-radius:5px; cursor:pointer; }
-  .vid-row:hover { background:#0d1218; }
-  .vid-row input { width:auto; }
-  .vid-row .name { flex:1; font-size:13px; }
-  .vid-row .status { font-size:11px; color:var(--mut); }
-  .vid-row .status.ready { color:var(--ok); }
-  .vid-row .status.uploaded, .vid-row .status.processing { color:var(--warn); }
-  .vid-row .status.failed { color:var(--err); }
+             padding:9px 10px; border-radius:5px; cursor:pointer; }
+  .vid-row:hover { background:#1a2230; }
+  .vid-row input { width:auto; cursor:pointer; }
+  .vid-row .name { flex:1; font-size:13px; word-break:break-all; }
+  .vid-row .status { font-size:11px; padding:2px 7px; border-radius:3px;
+                     background:#1a2230; color:var(--mut);
+                     text-transform:uppercase; letter-spacing:0.03em;
+                     font-weight:600; }
+  .vid-row .status.ready { background:#1a3826; color:var(--ok); }
+  .vid-row .status.uploaded, .vid-row .status.processing { background:#3a2c14; color:var(--warn); }
+  .vid-row .status.failed { background:#3a1c1c; color:var(--err); }
   .small { font-size:12px; color:var(--mut); }
-  .answer { background:#0d1218; border-left:3px solid var(--acc);
-            padding:14px 16px; border-radius:6px; line-height:1.55;
-            white-space:pre-wrap; }
-  .pv { background:#0d1218; border:1px solid var(--line);
-        border-radius:8px; padding:14px; margin-top:12px; }
+  .empty { padding:28px 16px; text-align:center; }
+  .empty .icon { font-size:28px; opacity:.5; margin-bottom:8px; }
+  .empty .ttl { font-size:14px; font-weight:600; margin-bottom:4px; }
+  .empty .body { font-size:12px; color:var(--mut); line-height:1.6; }
+  .empty code { background:#1a2230; padding:1px 6px; border-radius:3px;
+                font-size:11px; }
+
+  .answer { background:var(--panel2); border-left:3px solid var(--acc);
+            padding:14px 16px; border-radius:6px; line-height:1.6;
+            white-space:pre-wrap; word-wrap:break-word; }
+
+  /* Compare result polish */
+  .status-banner { display:flex; align-items:center; gap:10px;
+                   padding:12px 14px; border-radius:8px; margin-bottom:14px;
+                   border:1px solid var(--line); background:var(--panel2); }
+  .status-banner.s-COMPARABLE { border-color:#1a5e34; background:#0e1f17; }
+  .status-banner.s-PARTIAL { border-color:#5e4a1a; background:#1f1a0e; }
+  .status-banner.s-NOT_COMPARABLE { border-color:#5e1a1a; background:#1f0e0e; }
+  .status-banner.s-INSUFFICIENT { border-color:#3a3a3a; background:#161616; }
+  .badge { font-size:11px; padding:3px 9px; border-radius:11px;
+           font-weight:700; letter-spacing:.04em; flex-shrink:0; }
+  .badge.s-COMPARABLE { background:var(--ok); color:#0a1a10; }
+  .badge.s-PARTIAL { background:var(--warn); color:#2a1c08; }
+  .badge.s-NOT_COMPARABLE { background:var(--err); color:#fff; }
+  .badge.s-INSUFFICIENT { background:#4a4a4a; color:#fff; }
+  .reason-text { flex:1; font-size:13px; line-height:1.5; }
+  .meta { font-size:11px; color:var(--mut); margin-bottom:14px;
+          display:flex; gap:14px; flex-wrap:wrap; }
+  .meta b { color:var(--fg); font-weight:600; }
+
+  .pv-grid { display:grid; gap:12px; margin-top:14px;
+             grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
+  .pv { background:var(--panel2); border:1px solid var(--line);
+        border-radius:8px; padding:14px; position:relative;
+        transition:border-color .15s; }
+  .pv.best { border-color:var(--best); box-shadow:0 0 0 1px var(--best); }
+  .pv .best-tag { position:absolute; top:-9px; right:12px;
+                  background:var(--best); color:#2a1c08; font-size:10px;
+                  font-weight:700; letter-spacing:.05em;
+                  padding:2px 8px; border-radius:9px; }
   .pv .head { display:flex; justify-content:space-between;
-              align-items:baseline; gap:10px; margin-bottom:8px; }
-  .pv .head .fn { font-weight:600; font-size:14px; word-break:break-all; }
-  .pv .head .cf { font-size:12px; color:var(--mut); }
-  .conf-bar { height:5px; background:#1a2028; border-radius:3px;
+              align-items:baseline; gap:10px; margin-bottom:10px; }
+  .pv .head .fn { font-weight:600; font-size:14px; word-break:break-all;
+                  flex:1; min-width:0; }
+  .pv .head .cf { font-size:11px; color:var(--mut); flex-shrink:0; }
+  .conf-bar { height:6px; background:#1a2230; border-radius:3px;
               margin:6px 0 10px; overflow:hidden; }
-  .conf-bar > div { height:100%; background:var(--acc); }
-  .ts { display:inline-block; background:#1a2028; color:var(--mut);
+  .conf-bar > div { height:100%; transition:width .35s; }
+  .conf-bar > div.c-hi { background:var(--ok); }
+  .conf-bar > div.c-md { background:var(--warn); }
+  .conf-bar > div.c-lo { background:var(--err); }
+  .pv .explanation { font-size:13px; color:#d0d6dd; line-height:1.55;
+                     min-height:1.55em; }
+  .pv .ts-row { margin-top:10px; display:flex; flex-wrap:wrap; gap:5px; }
+  .ts { display:inline-flex; align-items:center; gap:4px;
+        background:#1a2230; color:var(--fg);
         font-family:ui-monospace,Menlo,monospace; font-size:11px;
-        padding:2px 6px; border-radius:3px; margin:3px 4px 0 0; }
-  .err { color:var(--err); font-size:13px; margin-top:8px; }
-  .ok  { color:var(--ok);  font-size:13px; margin-top:8px; }
-  .hidden { display:none; }
+        padding:3px 8px; border-radius:4px; cursor:pointer;
+        border:1px solid transparent; transition:border-color .15s, background .15s; }
+  .ts:hover { border-color:var(--acc); background:#22324a; }
+  .ts.copied { border-color:var(--ok); color:var(--ok); }
+
+  /* Diff highlight (Compare) */
+  .scores-grid { display:grid; gap:6px; margin-top:8px;
+                 grid-template-columns:1fr; font-size:12px; }
+  .score-row { display:flex; align-items:center; gap:8px; }
+  .score-row .vname { flex:1; color:var(--mut); word-break:break-all; }
+  .score-row .vbar { width:120px; height:5px; background:#1a2230;
+                     border-radius:3px; overflow:hidden; flex-shrink:0; }
+  .score-row .vbar > div { height:100%; background:var(--acc); }
+  .score-row .vval { width:46px; text-align:right;
+                     font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+
+  .err { color:var(--err); font-size:13px; margin-top:8px;
+         padding:10px 12px; background:#2a1414; border:1px solid #5e1a1a;
+         border-radius:6px; }
+  .ok  { color:var(--ok);  font-size:13px; margin-top:8px;
+         padding:10px 12px; background:#0e1f17; border:1px solid #1a5e34;
+         border-radius:6px; }
+  .info { font-size:13px; margin-top:8px;
+          padding:10px 12px; background:var(--panel2);
+          border:1px solid var(--line); border-radius:6px;
+          color:var(--mut); }
+
+  .hidden { display:none !important; }
   .spin { display:inline-block; width:12px; height:12px;
           border:2px solid var(--line); border-top-color:var(--acc);
-          border-radius:50%; animation:s 0.8s linear infinite; }
+          border-radius:50%; animation:s 0.8s linear infinite;
+          vertical-align:-2px; margin-right:6px; }
   @keyframes s { to { transform:rotate(360deg); } }
   .who { margin-left:auto; font-size:12px; color:var(--mut); }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+           background:var(--panel); border:1px solid var(--line);
+           padding:10px 16px; border-radius:8px; font-size:13px;
+           box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0;
+           transition:opacity .2s, transform .2s; pointer-events:none;
+           z-index:100; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
 </style>
 </head>
 <body>
 <header>
   <h1>Video-QA</h1>
-  <nav>
-    <span class="tab disabled" title="Use the API directly: POST /upload_video">Upload</span>
-    <span class="tab disabled" title="Use the API directly: POST /ask_question">Ask</span>
-    <span class="tab active">Multi-Video Compare</span>
+  <nav id="tabs">
+    <span class="tab" data-tab="ask">Single Video QA</span>
+    <span class="tab active" data-tab="compare">Multi-Video Compare</span>
   </nav>
   <span class="who" id="who"></span>
 </header>
@@ -91,192 +180,448 @@
   <!-- Login -->
   <section id="loginCard" class="card">
     <h2>Sign in</h2>
-    <p class="small">Use your existing Video-QA account, or register a new one
-       below. Tokens are stored in your browser only.</p>
-    <label>Email</label><input id="email" type="email" autocomplete="email"/>
-    <label>Password</label>
-    <input id="password" type="password" autocomplete="current-password"/>
-    <div class="row" style="margin-top:14px;">
-      <button id="loginBtn">Sign in</button>
-      <button id="registerBtn" class="ghost">Create account</button>
-    </div>
+    <p class="sub">Use your Video-QA account or create a new one. Tokens are
+       stored in your browser only.</p>
+    <form id="loginForm" onsubmit="event.preventDefault(); document.getElementById('loginBtn').click();">
+      <label>Email</label><input id="email" type="email" autocomplete="email" required/>
+      <label>Password</label>
+      <input id="password" type="password" autocomplete="current-password" required/>
+      <div class="row" style="margin-top:14px;">
+        <button id="loginBtn" type="submit">Sign in</button>
+        <button id="registerBtn" type="button" class="ghost">Create account</button>
+      </div>
+    </form>
     <div id="authMsg"></div>
   </section>
 
-  <!-- Compare -->
-  <section id="appCard" class="card hidden">
-    <h2>Compare videos</h2>
-    <p class="small">Pick 2 or more of your processed videos and ask a single
-       question. You'll get one comparative answer plus a per-video breakdown
-       with timestamps and confidence.</p>
+  <!-- ─── ASK TAB ─── -->
+  <section id="askCard" class="card hidden tab-pane" data-tab="ask">
+    <h2>Ask one video</h2>
+    <p class="sub">Pick a single processed video and ask a question.
+       You'll get an answer with confidence, evidence span, and a status flag.</p>
 
-    <label>Your videos</label>
-    <div id="vidList" class="vid-list"><span class="small">Loading…</span></div>
+    <label>Video</label>
+    <select id="askVidSel"><option value="">—</option></select>
 
     <label>Question</label>
-    <textarea id="question"
+    <textarea id="askQ"
+      placeholder="e.g. What does the lecture say about overfitting?"></textarea>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="askBtn">Ask</button>
+      <button class="ghost refreshBtn">Refresh videos</button>
+      <button class="ghost logoutBtn">Sign out</button>
+    </div>
+    <div id="askMsg"></div>
+  </section>
+
+  <section id="askResultCard" class="card hidden tab-pane" data-tab="ask">
+    <h2>Answer</h2>
+    <div class="meta" id="askMeta"></div>
+    <div id="askStatusBanner"></div>
+    <div class="answer" id="askAnswer"></div>
+    <div id="askTimestamps" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- ─── COMPARE TAB ─── -->
+  <section id="cmpCard" class="card hidden tab-pane active" data-tab="compare">
+    <h2>Compare videos</h2>
+    <p class="sub">Pick 2 or more processed videos and ask one question. The
+       system checks topic alignment and evidence sufficiency before answering.</p>
+
+    <label>Your videos</label>
+    <div id="cmpVidList" class="vid-list"></div>
+
+    <label>Question</label>
+    <textarea id="cmpQ"
       placeholder="e.g. How does each lecture define overfitting?"></textarea>
 
     <div class="row" style="margin-top:14px;">
-      <button id="compareBtn">Compare</button>
-      <button id="refreshBtn" class="ghost">Refresh videos</button>
-      <button id="logoutBtn" class="ghost">Sign out</button>
+      <button id="cmpBtn">Compare</button>
+      <button class="ghost refreshBtn">Refresh videos</button>
+      <button class="ghost logoutBtn">Sign out</button>
     </div>
-    <div id="compareMsg"></div>
+    <div id="cmpMsg"></div>
   </section>
 
-  <!-- Result -->
-  <section id="resultCard" class="card hidden">
+  <section id="cmpResultCard" class="card hidden tab-pane" data-tab="compare">
     <h2>Comparison</h2>
-    <div class="small" id="meta"></div>
-    <div class="answer" id="answer"></div>
-    <div id="perVideo"></div>
+    <div class="meta" id="cmpMeta"></div>
+    <div id="cmpStatusBanner"></div>
+    <div id="cmpScores"></div>
+    <div class="answer" id="cmpAnswer" style="margin-top:14px;"></div>
+    <div class="pv-grid" id="cmpPerVideo"></div>
   </section>
 </main>
 
+<div class="toast" id="toast"></div>
+
 <script>
+"use strict";
 const $ = (id) => document.getElementById(id);
 const TOKEN_KEY = "vqa_token";
 const EMAIL_KEY = "vqa_email";
+let videosCache = [];
+let currentTab = "compare";
 
-function setMsg(el, txt, kind) {
-  el.innerHTML = txt
-    ? `<div class="${kind === "err" ? "err" : kind === "ok" ? "ok" : "small"}">${txt}</div>`
-    : "";
+// ── Toast ─────────────────────────────────────────────────────────────
+let toastTimer = 0;
+function toast(txt) {
+  const t = $("toast"); t.textContent = txt; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
 }
-function spin(el, txt) { el.innerHTML = `<div class="small"><span class="spin"></span> ${txt}</div>`; }
 
+// ── Tabs ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  currentTab = name;
+  document.querySelectorAll("#tabs .tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.tab === name);
+  });
+  // Only show panes for the active tab — but keep login card visible if
+  // unauthenticated (login card is not a tab-pane).
+  document.querySelectorAll(".tab-pane").forEach(p => {
+    const show = p.dataset.tab === name && !$("loginCard").offsetParent;
+    // We only un-hide app panes if user is logged in. The result card
+    // stays hidden until there's a result, so add the .has-result class
+    // logic via existing classList state.
+    if (p.id === "askResultCard" || p.id === "cmpResultCard") {
+      // result panes manage their own .hidden — only re-hide if switching away
+      if (p.dataset.tab !== name) p.classList.add("hidden");
+    } else {
+      p.classList.toggle("hidden", !show);
+    }
+  });
+}
+document.querySelectorAll("#tabs .tab").forEach(t => {
+  t.onclick = () => switchTab(t.dataset.tab);
+});
+
+// ── HTTP ──────────────────────────────────────────────────────────────
 async function api(path, opts = {}) {
   const headers = Object.assign(
-    { "Content-Type": "application/json" },
-    opts.headers || {},
-  );
+    { "Content-Type": "application/json" }, opts.headers || {});
   const tok = localStorage.getItem(TOKEN_KEY);
   if (tok) headers["Authorization"] = "Bearer " + tok;
-  const r = await fetch(path, Object.assign({}, opts, { headers }));
+  let r;
+  try {
+    r = await fetch(path, Object.assign({}, opts, { headers }));
+  } catch (netErr) {
+    const e = new Error("Network error — is the server reachable?");
+    e.status = 0; throw e;
+  }
   let body = null;
   try { body = await r.json(); } catch { body = null; }
   if (!r.ok) {
-    const err = (body && body.detail) || r.statusText || "Request failed";
-    const e = new Error(err); e.status = r.status; throw e;
+    let msg = (body && body.detail) || r.statusText || "Request failed";
+    if (Array.isArray(msg)) msg = msg.map(d => d.msg || JSON.stringify(d)).join("; ");
+    if (typeof msg !== "string") msg = JSON.stringify(msg);
+    const e = new Error(msg); e.status = r.status; throw e;
   }
   return body;
 }
 
+// ── Messaging ─────────────────────────────────────────────────────────
+function setMsg(el, txt, kind) {
+  if (!txt) { el.innerHTML = ""; return; }
+  const cls = kind === "err" ? "err" : kind === "ok" ? "ok" : "info";
+  el.innerHTML = `<div class="${cls}">${txt}</div>`;
+}
+function spinHTML(txt) { return `<span class="spin"></span>${escapeHtml(txt)}`; }
+
+// ── Auth ──────────────────────────────────────────────────────────────
 async function authPost(path) {
   const email = $("email").value.trim();
   const password = $("password").value;
-  if (!email || !password) { setMsg($("authMsg"), "Email and password required", "err"); return; }
-  setMsg($("authMsg"), '<span class="spin"></span> ' + (path.includes("register") ? "Creating account…" : "Signing in…"));
+  if (!email || !password) {
+    setMsg($("authMsg"), "Email and password required.", "err"); return;
+  }
+  setMsg($("authMsg"), spinHTML(path.includes("register") ? "Creating account…" : "Signing in…"), "info");
   try {
-    const r = await api(path, { method: "POST", body: JSON.stringify({ email, password }) });
+    const r = await api(path, { method:"POST",
+      body: JSON.stringify({ email, password }) });
     localStorage.setItem(TOKEN_KEY, r.access_token);
     localStorage.setItem(EMAIL_KEY, email);
     setMsg($("authMsg"), "");
     showApp();
-  } catch (e) { setMsg($("authMsg"), e.message, "err"); }
+  } catch (e) {
+    setMsg($("authMsg"), escapeHtml(e.message), "err");
+  }
 }
-
 $("loginBtn").onclick = () => authPost("/auth/login");
 $("registerBtn").onclick = () => authPost("/auth/register");
-$("logoutBtn").onclick = () => {
+
+document.querySelectorAll(".logoutBtn").forEach(b => b.onclick = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
   showLogin();
-};
-$("refreshBtn").onclick = () => loadVideos();
+});
+document.querySelectorAll(".refreshBtn").forEach(b => b.onclick = () => loadVideos());
 
-async function showApp() {
+function showApp() {
   $("loginCard").classList.add("hidden");
-  $("appCard").classList.remove("hidden");
   $("who").textContent = localStorage.getItem(EMAIL_KEY) || "";
-  await loadVideos();
+  switchTab(currentTab);
+  loadVideos();
 }
 function showLogin() {
   $("loginCard").classList.remove("hidden");
-  $("appCard").classList.add("hidden");
-  $("resultCard").classList.add("hidden");
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("hidden"));
   $("who").textContent = "";
 }
 
+// ── Videos ────────────────────────────────────────────────────────────
 async function loadVideos() {
-  spin($("vidList"), "Loading your videos…");
+  $("cmpVidList").innerHTML = `<div class="info">${spinHTML("Loading your videos…")}</div>`;
+  $("askVidSel").innerHTML = `<option value="">Loading…</option>`;
   try {
     const vids = await api("/videos");
-    if (!vids.length) {
-      $("vidList").innerHTML = '<div class="small">No videos yet. Upload via <code>POST /upload_video</code> and process via <code>POST /process_video</code>.</div>';
-      return;
-    }
-    // SECURITY: filename + video_id come from user-controlled uploads, so we
-    // escape every interpolation. status is a server-controlled enum but we
-    // escape it too for defence-in-depth.
-    $("vidList").innerHTML = vids.map(v => `
+    videosCache = vids || [];
+    renderVideos();
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    const errHTML = `<div class="err">${escapeHtml(e.message)}</div>`;
+    $("cmpVidList").innerHTML = errHTML;
+    $("askVidSel").innerHTML = `<option value="">— error —</option>`;
+  }
+}
+
+function renderVideos() {
+  const ready = videosCache.filter(v => v.status === "ready");
+
+  // Compare list
+  if (!videosCache.length) {
+    $("cmpVidList").innerHTML = emptyVideosHTML();
+  } else {
+    $("cmpVidList").innerHTML = videosCache.map(v => `
       <label class="vid-row">
         <input type="checkbox" data-vid="${escapeAttr(v.video_id)}" ${v.status === "ready" ? "" : "disabled"} />
         <span class="name">${escapeHtml(v.filename)}</span>
         <span class="status ${escapeAttr(v.status)}">${escapeHtml(v.status)}</span>
       </label>`).join("");
-  } catch (e) {
-    if (e.status === 401) { showLogin(); return; }
-    $("vidList").innerHTML = `<div class="err">${e.message}</div>`;
+  }
+
+  // Ask dropdown — only ready videos make sense
+  if (!ready.length) {
+    $("askVidSel").innerHTML = `<option value="">— no processed videos yet —</option>`;
+  } else {
+    $("askVidSel").innerHTML =
+      `<option value="">— pick a video —</option>` +
+      ready.map(v =>
+        `<option value="${escapeAttr(v.video_id)}">${escapeHtml(v.filename)}</option>`
+      ).join("");
   }
 }
 
-$("compareBtn").onclick = async () => {
-  const ids = [...document.querySelectorAll("#vidList input:checked")]
-    .map(el => el.dataset.vid);
-  const question = $("question").value.trim();
-  if (ids.length < 2) { setMsg($("compareMsg"), "Pick at least 2 videos.", "err"); return; }
-  if (!question) { setMsg($("compareMsg"), "Enter a question.", "err"); return; }
-  setMsg($("compareMsg"), '<span class="spin"></span> Comparing…');
-  $("compareBtn").disabled = true;
-  try {
-    const r = await api("/compare_videos", {
-      method: "POST",
-      body: JSON.stringify({ question, video_ids: ids }),
-    });
-    renderResult(r);
-    setMsg($("compareMsg"), "");
-  } catch (e) {
-    if (e.status === 401) { showLogin(); return; }
-    setMsg($("compareMsg"), e.message, "err");
-  } finally { $("compareBtn").disabled = false; }
-};
-
-function renderResult(r) {
-  $("resultCard").classList.remove("hidden");
-  $("meta").textContent = `provider=${r.provider} · ${r.latency_ms} ms · ${r.per_video.length} videos`;
-  $("answer").textContent = r.answer;
-  // SECURITY: every interpolated value is server-stored user input
-  // (filenames especially) — escape all of them. Numeric fields are coerced.
-  $("perVideo").innerHTML = r.per_video.map(pv => {
-    const conf = Math.max(0, Math.min(100, Number(pv.confidence) || 0));
-    const top = Number(pv.top_score) || 0;
-    return `
-    <div class="pv">
-      <div class="head">
-        <span class="fn">${escapeHtml(pv.filename)}</span>
-        <span class="cf">confidence ${conf} · top score ${top.toFixed(3)}</span>
-      </div>
-      <div class="conf-bar"><div style="width:${conf}%"></div></div>
-      <div>${escapeHtml(pv.explanation)}</div>
-      <div style="margin-top:8px">
-        ${pv.timestamps.map(t => `<span class="ts">${escapeHtml(t.label)}</span>`).join("")}
-      </div>
-    </div>`;
-  }).join("");
-  $("resultCard").scrollIntoView({ behavior: "smooth", block: "start" });
+function emptyVideosHTML() {
+  return `<div class="empty">
+    <div class="icon">📼</div>
+    <div class="ttl">No videos yet</div>
+    <div class="body">Upload a video with <code>POST /upload_video</code>,<br/>
+      then index it with <code>POST /process_video</code>.<br/>
+      It will show up here once ready.</div>
+  </div>`;
 }
 
+function onAuthExpired() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(EMAIL_KEY);
+  showLogin();
+  setMsg($("authMsg"), "Your session expired. Please sign in again.", "err");
+}
+
+// ── Ask single video ──────────────────────────────────────────────────
+$("askBtn").onclick = async () => {
+  const video_id = $("askVidSel").value;
+  const query = $("askQ").value.trim();
+  setMsg($("askMsg"), "");
+  if (!video_id) { setMsg($("askMsg"), "Pick a video first.", "err"); return; }
+  if (!query) { setMsg($("askMsg"), "Type a question.", "err"); return; }
+  setMsg($("askMsg"), spinHTML("Asking…"), "info");
+  $("askBtn").disabled = true;
+  try {
+    const r = await api("/ask_question", {
+      method:"POST", body: JSON.stringify({ query, video_id }),
+    });
+    renderAskResult(r);
+    setMsg($("askMsg"), "");
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    setMsg($("askMsg"), escapeHtml(e.message), "err");
+    $("askResultCard").classList.add("hidden");
+  } finally { $("askBtn").disabled = false; }
+};
+
+function renderAskResult(r) {
+  const card = $("askResultCard");
+  card.classList.remove("hidden");
+  const conf = clamp01_100(r.confidence);
+  const status = String(r.status || "UNKNOWN").toUpperCase();
+  const statusColor = status === "SUPPORTED" ? "s-COMPARABLE"
+    : status === "PARTIAL" ? "s-PARTIAL"
+    : status === "UNSUPPORTED" || status === "REFUSED" ? "s-NOT_COMPARABLE"
+    : "s-INSUFFICIENT";
+  $("askMeta").innerHTML = metaHTML({
+    "provider": r.provider || "—",
+    "latency": (r.latency_ms || 0) + " ms",
+    "confidence": conf,
+    "cached": r.cached ? "yes" : "no",
+  });
+  $("askStatusBanner").innerHTML = `
+    <div class="status-banner ${statusColor}">
+      <span class="badge ${statusColor}">${escapeHtml(status)}</span>
+      <span class="reason-text">${escapeHtml(r.confidence_label || "")}</span>
+    </div>`;
+  $("askAnswer").textContent = r.answer || "(no answer)";
+  const tsArr = r.timestamp ? [r.timestamp] : [];
+  $("askTimestamps").innerHTML = tsArr.length
+    ? `<label style="margin-top:0">Evidence span</label>
+       <div class="ts-row">${tsArr.map(t => tsChipHTML(t)).join("")}</div>`
+    : "";
+  card.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+// ── Compare ───────────────────────────────────────────────────────────
+$("cmpBtn").onclick = async () => {
+  const ids = [...document.querySelectorAll("#cmpVidList input:checked")]
+    .map(el => el.dataset.vid);
+  const question = $("cmpQ").value.trim();
+  setMsg($("cmpMsg"), "");
+  if (ids.length < 2) { setMsg($("cmpMsg"), "Pick at least 2 videos.", "err"); return; }
+  if (ids.length > 8) { setMsg($("cmpMsg"), "Pick at most 8 videos.", "err"); return; }
+  if (!question) { setMsg($("cmpMsg"), "Type a question.", "err"); return; }
+  setMsg($("cmpMsg"), spinHTML("Comparing… checking topic alignment, evidence, and confidence…"), "info");
+  $("cmpBtn").disabled = true;
+  try {
+    const r = await api("/compare_videos", {
+      method:"POST", body: JSON.stringify({ question, video_ids: ids }),
+    });
+    renderCompareResult(r);
+    setMsg($("cmpMsg"), "");
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    setMsg($("cmpMsg"), escapeHtml(e.message), "err");
+    $("cmpResultCard").classList.add("hidden");
+  } finally { $("cmpBtn").disabled = false; }
+};
+
+function renderCompareResult(r) {
+  const card = $("cmpResultCard");
+  card.classList.remove("hidden");
+  const status = String(r.status || "UNKNOWN").toUpperCase();
+  const statusClass = "s-" + status;
+  const sim = r.gate && r.gate.topic_similarity != null
+    ? Number(r.gate.topic_similarity).toFixed(2) : "—";
+
+  $("cmpMeta").innerHTML = metaHTML({
+    "provider": r.provider || "—",
+    "latency": (r.latency_ms || 0) + " ms",
+    "videos": (r.per_video || []).length,
+    "topic similarity": sim,
+  });
+
+  $("cmpStatusBanner").innerHTML = `
+    <div class="status-banner ${statusClass}">
+      <span class="badge ${statusClass}">${escapeHtml(status)}</span>
+      <span class="reason-text">${escapeHtml(r.reason || "")}</span>
+    </div>`;
+
+  // Per-video relevance score chart (highlights differences visually)
+  const scores = r.scores || {};
+  const vidNameById = Object.fromEntries(
+    (r.per_video || []).map(pv => [pv.video_id, pv.filename]));
+  const scoreEntries = Object.entries(scores)
+    .map(([vid, s]) => [vid, Number(s) || 0])
+    .sort((a, b) => b[1] - a[1]);
+  if (scoreEntries.length) {
+    const maxS = Math.max(0.01, ...scoreEntries.map(e => e[1]));
+    $("cmpScores").innerHTML = `
+      <label style="margin-top:0">Query relevance per video</label>
+      <div class="scores-grid">
+        ${scoreEntries.map(([vid, s]) => `
+          <div class="score-row">
+            <span class="vname">${escapeHtml(vidNameById[vid] || vid)}</span>
+            <span class="vbar"><div style="width:${(s / maxS * 100).toFixed(0)}%"></div></span>
+            <span class="vval">${s.toFixed(3)}</span>
+          </div>`).join("")}
+      </div>`;
+  } else {
+    $("cmpScores").innerHTML = "";
+  }
+
+  // Comparative answer (the prose). For refusals, the comparison string is
+  // the gate's reason — already shown in the banner — so we keep the prose
+  // block too because it might also include extractive details.
+  $("cmpAnswer").textContent = r.comparison || r.answer || "";
+
+  // Per-video cards. Highlight the one with the highest confidence as
+  // "Best Video" — only when status is COMPARABLE or PARTIAL.
+  const pvs = r.per_video || [];
+  const showBest = (status === "COMPARABLE" || status === "PARTIAL")
+                && pvs.length > 1;
+  let bestId = null;
+  if (showBest) {
+    bestId = pvs.reduce((a, b) =>
+      (Number(b.confidence) || 0) > (Number(a.confidence) || 0) ? b : a).video_id;
+  }
+
+  $("cmpPerVideo").innerHTML = pvs.map(pv => {
+    const conf = clamp01_100(pv.confidence);
+    const top = Number(pv.top_score) || 0;
+    const cClass = conf >= 70 ? "c-hi" : conf >= 40 ? "c-md" : "c-lo";
+    const bestTag = pv.video_id === bestId
+      ? `<span class="best-tag">★ Best evidence</span>` : "";
+    return `
+    <div class="pv${pv.video_id === bestId ? " best" : ""}">
+      ${bestTag}
+      <div class="head">
+        <span class="fn">${escapeHtml(pv.filename)}</span>
+        <span class="cf">conf ${conf} · top ${top.toFixed(3)}</span>
+      </div>
+      <div class="conf-bar"><div class="${cClass}" style="width:${conf}%"></div></div>
+      <div class="explanation">${escapeHtml(pv.explanation || "(no explanation)")}</div>
+      ${(pv.timestamps || []).length ? `
+        <div class="ts-row">
+          ${pv.timestamps.map(t => tsChipHTML(t.label)).join("")}
+        </div>` : ""}
+    </div>`;
+  }).join("");
+
+  card.scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function metaHTML(obj) {
+  return Object.entries(obj).map(([k, v]) =>
+    `<span><b>${escapeHtml(String(v))}</b> ${escapeHtml(k)}</span>`
+  ).join("");
+}
+function tsChipHTML(label) {
+  return `<span class="ts" data-ts="${escapeAttr(label)}" title="Click to copy">${escapeHtml(label)}</span>`;
+}
+// Click-to-copy on any timestamp chip (event-delegated, set up once).
+document.addEventListener("click", (ev) => {
+  const el = ev.target.closest(".ts");
+  if (!el) return;
+  const txt = el.dataset.ts || el.textContent;
+  navigator.clipboard?.writeText(txt).then(
+    () => { el.classList.add("copied"); toast("Copied " + txt);
+            setTimeout(() => el.classList.remove("copied"), 900); },
+    () => toast("Copy failed"));
+});
+
+function clamp01_100(n) {
+  const v = Math.round(Number(n) || 0);
+  return Math.max(0, Math.min(100, v));
+}
 function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
 }
-// Stricter escape for use inside HTML attribute values.
 function escapeAttr(s) { return escapeHtml(s); }
 
-// Boot
+// ── Boot ──────────────────────────────────────────────────────────────
 if (localStorage.getItem(TOKEN_KEY)) showApp(); else showLogin();
 </script>
 </body>
