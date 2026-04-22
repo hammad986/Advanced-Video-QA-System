@@ -30,6 +30,12 @@ from pydantic import BaseModel, Field
 
 from . import auth, db
 from .compare_gating import evaluate as gate_evaluate
+from .compare_ranking import (
+    compute_topic_strength,
+    select_best,
+    make_recommendation,
+    extract_differences,
+)
 
 logger = logging.getLogger("video_qa.api.compare")
 
@@ -80,12 +86,20 @@ class GateDetail(BaseModel):
     sufficiency: Dict[str, Dict[str, Any]] = {}
 
 
+class RecommendationOut(BaseModel):
+    beginner: Optional[str] = None
+    revision: Optional[str] = None
+    beginner_video_id: Optional[str] = None
+    revision_video_id: Optional[str] = None
+    explanation: str = ""
+
+
 class CompareOut(BaseModel):
     # ── Strict spec fields (always present) ────────────────────────────
     status: str          # "COMPARABLE" | "PARTIAL" | "NOT_COMPARABLE" | "INSUFFICIENT"
     reason: str          # human-readable explanation of the decision
     comparison: str      # comparative answer (or refusal text when gated)
-    scores: Dict[str, float] = {}    # video_id → relevance score (0..1)
+    scores: Dict[str, float] = {}    # video_id → query↔centroid relevance (0..1)
     sources: Dict[str, str] = {}     # video_id → "[mm:ss-mm:ss]"
 
     # ── Existing rich fields (kept for the UI / API consumers) ─────────
@@ -95,6 +109,20 @@ class CompareOut(BaseModel):
     provider: str
     latency_ms: int
     gate: GateDetail     # full gating evidence so callers can audit decisions
+
+    # ── Topic-strength ranking + recommendation layer (additive) ───────
+    # Per-video deterministic scoring: similarity, coverage, clarity, and
+    # the combined topic_strength score (0..1). Always populated.
+    topic_strength: Dict[str, Dict[str, float]] = {}
+    # The video that explains the topic best — None when ranking is invalid
+    # (NOT_COMPARABLE / INSUFFICIENT).
+    best_video: Optional[str] = None
+    # Beginner / revision picks. Both fields can be None when ranking is
+    # invalid; `explanation` always carries human-readable reasoning.
+    recommendation: RecommendationOut = RecommendationOut()
+    # Pairwise factual deltas (sentence length, vocabulary density, score).
+    # Empty when ranking is invalid.
+    differences: List[str] = []
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -261,6 +289,33 @@ def compare_videos(
         else:
             sources[entry["video_id"]] = "[no relevant span]"
 
+    # Topic-strength scoring. STRICT CONTRACT: ALL ranking outputs are withheld
+    # when the gate refuses (NOT_COMPARABLE / INSUFFICIENT). We compute the raw
+    # scores only when ranking is valid — refusal returns empty topic_strength,
+    # null best_video, empty differences, and a recommendation with picks=None
+    # plus a human-readable explanation of *why* ranking was withheld.
+    filenames_by_id = {e["video_id"]: e["filename"] for e in per_video_chunks}
+    if decision in ("COMPARABLE", "PARTIAL"):
+        try:
+            topic_strength = compute_topic_strength(per_video_chunks, payload.top_k_per_video)
+            best_video = select_best(topic_strength, decision)
+            recommendation_dict = make_recommendation(topic_strength, filenames_by_id, decision)
+            differences = extract_differences(topic_strength, filenames_by_id, decision)
+        except Exception as exc:
+            logger.exception("[compare] ranking layer failed: %s", exc)
+            topic_strength, best_video = {}, None
+            recommendation_dict = {"beginner": None, "revision": None,
+                                   "beginner_video_id": None, "revision_video_id": None,
+                                   "explanation": "Ranking unavailable due to internal error."}
+            differences = []
+    else:
+        topic_strength, best_video, differences = {}, None, []
+        recommendation_dict = {"beginner": None, "revision": None,
+                               "beginner_video_id": None, "revision_video_id": None,
+                               "explanation": ("Ranking withheld: the videos are not safely "
+                                               "comparable for this question. See `reason`.")}
+    recommendation = RecommendationOut(**recommendation_dict)
+
     # If gate says no, refuse deterministically (no LLM call). This is the
     # human-expert behaviour the spec asks for: refuse when invalid, explain
     # clearly, never hallucinate a comparison.
@@ -283,6 +338,10 @@ def compare_videos(
                 query_relevance=gate["query_relevance"],
                 sufficiency=gate["sufficiency"],
             ),
+            topic_strength=topic_strength,
+            best_video=best_video,        # always None on refusal (per ranker)
+            recommendation=recommendation, # explanation populated, picks None
+            differences=differences,       # always [] on refusal
         )
 
     # PARTIAL or COMPARABLE → run the LLM (with extractive fallback).
@@ -345,6 +404,10 @@ def compare_videos(
             query_relevance=gate["query_relevance"],
             sufficiency=gate["sufficiency"],
         ),
+        topic_strength=topic_strength,
+        best_video=best_video,
+        recommendation=recommendation,
+        differences=differences,
     )
 
 

@@ -111,3 +111,30 @@ streamlit run video_qa/app.py --server.port 5000 --server.address 0.0.0.0
 | mean_confidence (in-scope) | 92.5 |
 | cache_hits_second_pass | 9/9 |
 | mean_latency | 4.0 s |
+
+## Topic-Strength + Recommendation Layer (`api/compare_ranking.py`)
+
+Final additive enhancement to `/compare_videos`. Pure deterministic ranking
+(NO LLM calls, no network) computed from the retrieval signals already
+produced by the gating step.
+
+- **Per-video scoring:** `score = 0.5·similarity + 0.3·coverage + 0.2·clarity`
+  - `similarity`: mean of top-k FAISS scores (clamped to 0..1)
+  - `coverage`: returned chunks / requested top_k_per_video
+  - `clarity`: text-stat heuristic (sentence length + word length anchors).
+    A floor of `n_words / 30` on the sentence count keeps ASR transcripts
+    without punctuation from collapsing to a single huge "sentence".
+- **best_video:** argmax of score, **only** when status ∈ {COMPARABLE, PARTIAL}.
+- **recommendation:** beginner = max clarity; revision = max coverage·similarity.
+- **differences:** pairwise factual deltas (sentence length, vocabulary
+  density, score) — emitted only when above MIN_*_DELTA thresholds.
+- **Strict withholding:** for NOT_COMPARABLE / INSUFFICIENT the route returns
+  `best_video=null`, `topic_strength={}`, `recommendation` with picks=null
+  plus a human-readable `explanation`, and `differences=[]`.
+- **No regressions:** `/ask_question` is untouched; existing CompareOut
+  fields are preserved (additive only).
+- **Validation:** route-level test forces all four gate decisions and
+  asserts the contract; ranker unit tests cover argmax / refusal branches.
+- **UI:** new per-card topic-strength pill, Recommendation card (beginner/
+  revision picks + explanation), and Key-differences list rendered below
+  the per-video grid. Empty/withheld states render the explanation only.

@@ -120,6 +120,32 @@
   .pv .explanation { font-size:13px; color:#d0d6dd; line-height:1.55;
                      min-height:1.55em; }
   .pv .ts-row { margin-top:10px; display:flex; flex-wrap:wrap; gap:5px; }
+  .pv .strength { display:flex; align-items:center; gap:6px;
+                  font-size:11px; color:var(--mut); margin-top:8px; }
+  .pv .strength .pill { background:#1a2230; color:var(--fg);
+                        padding:2px 7px; border-radius:9px;
+                        font-family:ui-monospace,Menlo,monospace; font-size:10px; }
+
+  /* Recommendation card */
+  .rec-card { display:grid; gap:10px; margin-top:14px;
+              grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+  .rec { background:var(--panel2); border:1px solid var(--line);
+         border-left:3px solid var(--acc); border-radius:6px;
+         padding:12px 14px; }
+  .rec.beginner { border-left-color:var(--ok); }
+  .rec.revision { border-left-color:var(--best); }
+  .rec .lbl { font-size:10px; letter-spacing:.08em; text-transform:uppercase;
+              color:var(--mut); font-weight:700; margin-bottom:6px; }
+  .rec .body { font-size:13px; line-height:1.5; }
+  .rec-explanation { font-size:12px; color:var(--mut); margin-top:8px;
+                     padding:8px 12px; background:var(--panel2);
+                     border:1px dashed var(--line); border-radius:6px; }
+
+  /* Differences list */
+  .diffs { margin-top:14px; }
+  .diffs ul { margin:0; padding-left:20px; font-size:13px; line-height:1.7; }
+  .diffs li { color:#d0d6dd; }
+  .diffs li::marker { color:var(--acc); }
   .ts { display:inline-flex; align-items:center; gap:4px;
         background:#1a2230; color:var(--fg);
         font-family:ui-monospace,Menlo,monospace; font-size:11px;
@@ -251,6 +277,8 @@
     <div id="cmpScores"></div>
     <div class="answer" id="cmpAnswer" style="margin-top:14px;"></div>
     <div class="pv-grid" id="cmpPerVideo"></div>
+    <div id="cmpRecommendation"></div>
+    <div id="cmpDifferences"></div>
   </section>
 </main>
 
@@ -554,23 +582,28 @@ function renderCompareResult(r) {
   // block too because it might also include extractive details.
   $("cmpAnswer").textContent = r.comparison || r.answer || "";
 
-  // Per-video cards. Highlight the one with the highest confidence as
-  // "Best Video" — only when status is COMPARABLE or PARTIAL.
+  // Per-video cards. The authoritative "best" pick comes from the deterministic
+  // ranking layer (r.best_video). It's only set when the gate decision is
+  // COMPARABLE or PARTIAL — so we never mislead on a refusal.
   const pvs = r.per_video || [];
-  const showBest = (status === "COMPARABLE" || status === "PARTIAL")
-                && pvs.length > 1;
-  let bestId = null;
-  if (showBest) {
-    bestId = pvs.reduce((a, b) =>
-      (Number(b.confidence) || 0) > (Number(a.confidence) || 0) ? b : a).video_id;
-  }
+  const ts = r.topic_strength || {};
+  const bestId = r.best_video || null;
 
   $("cmpPerVideo").innerHTML = pvs.map(pv => {
     const conf = clamp01_100(pv.confidence);
     const top = Number(pv.top_score) || 0;
     const cClass = conf >= 70 ? "c-hi" : conf >= 40 ? "c-md" : "c-lo";
     const bestTag = pv.video_id === bestId
-      ? `<span class="best-tag">★ Best evidence</span>` : "";
+      ? `<span class="best-tag">★ Best for this topic</span>` : "";
+    const s = ts[pv.video_id];
+    const strengthRow = s ? `
+      <div class="strength" title="similarity·0.5 + coverage·0.3 + clarity·0.2">
+        <span>topic strength</span>
+        <span class="pill">${Number(s.score).toFixed(2)}</span>
+        <span>sim ${Number(s.similarity).toFixed(2)}</span>
+        <span>cov ${Number(s.coverage).toFixed(2)}</span>
+        <span>clarity ${Number(s.clarity).toFixed(2)}</span>
+      </div>` : "";
     return `
     <div class="pv${pv.video_id === bestId ? " best" : ""}">
       ${bestTag}
@@ -580,12 +613,52 @@ function renderCompareResult(r) {
       </div>
       <div class="conf-bar"><div class="${cClass}" style="width:${conf}%"></div></div>
       <div class="explanation">${escapeHtml(pv.explanation || "(no explanation)")}</div>
+      ${strengthRow}
       ${(pv.timestamps || []).length ? `
         <div class="ts-row">
           ${pv.timestamps.map(t => tsChipHTML(t.label)).join("")}
         </div>` : ""}
     </div>`;
   }).join("");
+
+  // Recommendation card (beginner / revision). Only render real picks when
+  // the ranker produced them; otherwise show the explanation only — it tells
+  // the user *why* recommendations were withheld.
+  const rec = r.recommendation || {};
+  const hasPicks = rec.beginner || rec.revision;
+  if (hasPicks || rec.explanation) {
+    $("cmpRecommendation").innerHTML = `
+      <label style="margin-top:18px">Recommendation</label>
+      ${hasPicks ? `
+        <div class="rec-card">
+          ${rec.beginner ? `
+            <div class="rec beginner">
+              <div class="lbl">Best for beginners</div>
+              <div class="body">${escapeHtml(rec.beginner)}</div>
+            </div>` : ""}
+          ${rec.revision ? `
+            <div class="rec revision">
+              <div class="lbl">Best for revision</div>
+              <div class="body">${escapeHtml(rec.revision)}</div>
+            </div>` : ""}
+        </div>` : ""}
+      ${rec.explanation ? `
+        <div class="rec-explanation">${escapeHtml(rec.explanation)}</div>` : ""}`;
+  } else {
+    $("cmpRecommendation").innerHTML = "";
+  }
+
+  // Key differences (deterministic factual deltas).
+  const diffs = Array.isArray(r.differences) ? r.differences : [];
+  if (diffs.length) {
+    $("cmpDifferences").innerHTML = `
+      <label style="margin-top:18px">Key differences</label>
+      <div class="diffs"><ul>
+        ${diffs.map(d => `<li>${escapeHtml(d)}</li>`).join("")}
+      </ul></div>`;
+  } else {
+    $("cmpDifferences").innerHTML = "";
+  }
 
   card.scrollIntoView({ behavior:"smooth", block:"start" });
 }
