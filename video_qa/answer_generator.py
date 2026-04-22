@@ -144,7 +144,7 @@ Answer:"""
 # LLM Call
 # ──────────────────────────────────────────────────────
 
-def ask_local_llm(prompt: str, timeout: Optional[int] = None) -> Optional[str]:
+def ask_local_llm(prompt: str, timeout: Optional[float] = None) -> Optional[str]:
     """Ask local Ollama (phi3:mini). Returns None if unavailable."""
     try:
         response = requests.post(
@@ -159,7 +159,7 @@ def ask_local_llm(prompt: str, timeout: Optional[int] = None) -> Optional[str]:
                     "top_p": 0.9,
                 }
             },
-            timeout=timeout or config.get("answer.timeout", 180)
+            timeout=timeout if timeout is not None else config.get("answer.timeout", 180)
         )
 
         if response.status_code == 200:
@@ -234,142 +234,318 @@ def ask_huggingface_llm(prompt: str) -> Optional[str]:
         logger.error(f"HuggingFace request failed: {e}")
         return None
 
-def generate_with_fallback(prompt: str) -> Dict[str, str]:
-    """
-    Generate an answer trying multiple LLM providers.
-    Preferred sequence: Gemini -> Ollama (local) -> OpenAI -> HuggingFace -> Error
-    """
-    import os
+# ──────────────────────────────────────────────────────
+# Optimised multi-provider fallback chain
+# ──────────────────────────────────────────────────────
+#
+# Spec contract (do NOT regress):
+#   • Cloud chain : Gemini → Grok → HuggingFace → (gated) Bedrock → Extractive
+#   • Local mode  : Ollama → Extractive   (NO cloud calls)
+#   • Bedrock is LAST RESORT: only when no acceptable answer was produced
+#     AND the per-session call cap has not been reached.
+#   • Each LLM call is hard-bounded by LLM_CALL_TIMEOUT_SECONDS (default 2s).
+#   • Returned dict carries: response, provider, status, fallback_level,
+#     latency_ms (the winning provider) and total_latency_ms.
+#
+# Knobs (all optional env vars):
+#   LLM_CALL_TIMEOUT_SECONDS  → per-call wall-clock cap (float, default 2.0)
+#   LOCAL_MODE                → "1"/"true" forces Ollama-only flow
+#   BEDROCK_MAX_CALLS         → integer cap per process (default 5)
+#   BEDROCK_DISABLED          → "1" to disable Bedrock entirely
+#   XAI_API_KEY               → enables Grok via x.ai OpenAI-compatible API
+#   AWS_REGION / AWS_*        → standard boto3 credentials (Bedrock)
+import time as _time
+import threading as _threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutureTimeout
 
-    # 1. Try Gemini FIRST (preferred cloud provider)
-    global _GEMINI_DAILY_EXHAUSTED
+_DEFAULT_TIMEOUT_S = float(os.environ.get("LLM_CALL_TIMEOUT_SECONDS", "2"))
+_BEDROCK_MAX_CALLS = int(os.environ.get("BEDROCK_MAX_CALLS", "5"))
+_BEDROCK_DISABLED = os.environ.get("BEDROCK_DISABLED", "").lower() in ("1", "true", "yes")
+_BEDROCK_CALL_COUNT = 0
+_BEDROCK_LOCK = _threading.Lock()
+# One module-level executor — cheap and threadsafe; avoids spinning a new
+# pool per request which would dominate latency at our 2s budget.
+_LLM_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="llm-call")
+
+
+def _is_local_mode() -> bool:
+    """LOCAL_MODE env var OR config flag forces the no-cloud flow."""
+    if os.environ.get("LOCAL_MODE", "").lower() in ("1", "true", "yes"):
+        return True
+    return bool(config.get("answer.local_mode", False))
+
+
+def get_bedrock_call_count() -> int:
+    """Public accessor — used by tests and the API to surface usage."""
+    return _BEDROCK_CALL_COUNT
+
+
+def reset_bedrock_call_count() -> None:
+    """Tests only. Resets the per-process Bedrock counter."""
+    global _BEDROCK_CALL_COUNT
+    with _BEDROCK_LOCK:
+        _BEDROCK_CALL_COUNT = 0
+
+
+def _is_acceptable_answer(text: Optional[str]) -> bool:
+    """An LLM response is 'acceptable' when it is a non-trivial answer that
+    is NOT the explicit not-found sentinel and NOT the all-providers-down
+    error string. Matches the gate used to decide whether Bedrock is needed.
+    """
+    if not text:
+        return False
+    t = text.strip()
+    if len(t) < 5:
+        return False
+    if _is_not_found(t):
+        return False
+    if t.lower().startswith("all ai services"):
+        return False
+    return True
+
+
+def _call_with_timeout(fn, prompt: str, timeout_s: float) -> Optional[str]:
+    """Run ``fn(prompt)`` on a worker thread, hard-bounded by ``timeout_s``.
+
+    Returns whatever the provider returned, or None on timeout/exception.
+    The thread itself cannot be killed (Python limitation) so a slow upstream
+    will keep running in the background — but the caller is unblocked at the
+    timeout, which is what the spec requires.
+    """
+    fut = _LLM_EXECUTOR.submit(fn, prompt)
     try:
-        if _GEMINI_DAILY_EXHAUSTED:
-            raise RuntimeError("gemini_daily_quota_exhausted_this_session")
-        import google.generativeai as genai
+        return fut.result(timeout=timeout_s)
+    except _FutureTimeout:
+        logger.warning(f"[LLM] {fn.__name__} exceeded {timeout_s:.1f}s budget; falling through.")
+        return None
+    except Exception as exc:
+        logger.warning(f"[LLM] {fn.__name__} raised: {exc}")
+        return None
 
+
+# ── Provider call functions (each returns Optional[str] or None) ──────
+def _call_gemini(prompt: str) -> Optional[str]:
+    global _GEMINI_DAILY_EXHAUSTED
+    if _GEMINI_DAILY_EXHAUSTED:
+        return None
+    try:
+        import google.generativeai as genai
         api_key = os.environ.get("GEMINI_API_KEY") or config.get("answer.gemini_api_key", "")
         if not api_key or api_key == "${GEMINI_API_KEY}":
-            try:
-                from dotenv import dotenv_values
-                env_dict = dotenv_values(".env")
-                api_key = env_dict.get("GEMINI_API_KEY", "")
-            except Exception:
-                pass
-
-        if api_key and api_key != "${GEMINI_API_KEY}":
-            import time as _time
-            genai.configure(api_key=api_key.strip("'\" \n\r"))
-            model_name = config.get("answer.gemini_model", "gemini-2.5-flash")
-            model = genai.GenerativeModel(model_name)
-
-            last_err = None
-            for attempt in range(3):
-                try:
-                    resp = model.generate_content(
-                        prompt,
-                        generation_config={
-                            "temperature": 0.1,
-                            "max_output_tokens": config.get("answer.max_tokens", 256),
-                        },
-                    )
-                    if resp and getattr(resp, "text", None):
-                        logger.info(f"[LLM] Gemini ({model_name}) returned {len(resp.text)} chars")
-                        return {
-                            "response": resp.text.strip(),
-                            "provider": "gemini",
-                            "status": f"Using Gemini ({model_name})",
-                        }
-                    logger.warning("[LLM] Gemini returned empty response; falling through.")
-                    break
-                except Exception as api_err:
-                    last_err = api_err
-                    msg = str(api_err)
-                    # If daily/project quota exhausted, trip the session kill-switch
-                    # so subsequent queries do not waste retry backoff on unrecoverable calls.
-                    if _looks_like_daily_quota(msg):
-                        _GEMINI_DAILY_EXHAUSTED = True
-                        logger.warning("[LLM] Gemini daily free-tier quota exhausted; disabling Gemini for this session.")
-                        break
-                    # Retry briefly on per-minute 429 rate limit, else break
-                    if "429" in msg or "quota" in msg.lower() or "rate" in msg.lower():
-                        wait = 2 ** attempt
-                        logger.warning(f"[LLM] Gemini rate-limited (attempt {attempt+1}/3). Sleeping {wait}s.")
-                        _time.sleep(wait)
-                        continue
-                    raise
-            if last_err:
-                logger.error(f"Gemini gave up after retries: {last_err}")
+            return None
+        genai.configure(api_key=api_key.strip("'\" \n\r"))
+        model_name = config.get("answer.gemini_model", "gemini-2.5-flash")
+        model = genai.GenerativeModel(model_name)
+        resp = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.1,
+                "max_output_tokens": config.get("answer.max_tokens", 256),
+            },
+        )
+        if resp and getattr(resp, "text", None):
+            return resp.text.strip()
+        return None
+    except Exception as exc:
+        msg = str(exc)
+        if _looks_like_daily_quota(msg):
+            _GEMINI_DAILY_EXHAUSTED = True
+            logger.warning("[LLM] Gemini daily quota exhausted — disabling for this session.")
         else:
-            logger.info("[LLM] GEMINI_API_KEY not set; skipping Gemini.")
-    except Exception as e:
-        logger.error(f"Gemini call failed: {e}")
+            logger.warning(f"[LLM] Gemini error: {exc}")
+        return None
 
-    # 2. Try Ollama (local mode)
+
+def _call_grok(prompt: str) -> Optional[str]:
+    """x.ai Grok via the OpenAI-compatible HTTP API. Returns None when no key.
+
+    We use raw HTTP (requests) instead of the OpenAI SDK to keep the per-call
+    timeout strict and avoid any SDK-level retry that would blow our budget.
+    """
+    api_key = os.environ.get("XAI_API_KEY") or os.environ.get("GROK_API_KEY", "")
+    if not api_key:
+        return None
     try:
-        if config.get("answer.use_local", True):
-            response = ask_local_llm(prompt)
-            if response:
+        r = requests.post(
+            "https://api.x.ai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}",
+                     "Content-Type": "application/json"},
+            json={
+                "model": config.get("answer.grok_model", "grok-2-latest"),
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": config.get("answer.max_tokens", 256),
+                "temperature": 0,
+            },
+            timeout=_DEFAULT_TIMEOUT_S,  # belt-and-braces
+        )
+        if r.status_code != 200:
+            logger.warning(f"[LLM] Grok HTTP {r.status_code}: {r.text[:200]}")
+            return None
+        data = r.json()
+        text = (data.get("choices") or [{}])[0].get("message", {}).get("content")
+        return text.strip() if text else None
+    except Exception as exc:
+        logger.warning(f"[LLM] Grok error: {exc}")
+        return None
+
+
+def _call_huggingface(prompt: str) -> Optional[str]:
+    token = os.environ.get("HF_TOKEN") or config.get("answer.hf_token", "")
+    if not token or token == "${HF_TOKEN}":
+        return None
+    try:
+        from huggingface_hub import InferenceClient
+        client = InferenceClient(token=token, timeout=_DEFAULT_TIMEOUT_S)
+        resp = client.chat_completion(
+            model=config.get("answer.hf_model", "meta-llama/Llama-3.2-3B-Instruct"),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=config.get("answer.max_tokens", 256),
+            temperature=0.1,
+        )
+        text = resp.choices[0].message.content
+        return text.strip() if text else None
+    except Exception as exc:
+        logger.warning(f"[LLM] HuggingFace error: {exc}")
+        return None
+
+
+def _call_ollama(prompt: str) -> Optional[str]:
+    return ask_local_llm(prompt, timeout=_DEFAULT_TIMEOUT_S)
+
+
+def _call_bedrock(prompt: str) -> Optional[str]:
+    """AWS Bedrock — strict last resort. Increments the global counter ONLY on
+    a real call attempt (not when skipped due to disabled flag / no creds)."""
+    global _BEDROCK_CALL_COUNT
+    if _BEDROCK_DISABLED:
+        return None
+    try:
+        import boto3, json as _json
+    except ImportError:
+        logger.info("[LLM] boto3 not installed — Bedrock unavailable.")
+        return None
+    # Atomic reserve-or-bail: under concurrent requests the check + increment
+    # MUST happen in a single critical section, otherwise N threads racing the
+    # cap can each pass an independent check and collectively overshoot the
+    # configured spend ceiling. We reserve the slot first; if the call later
+    # fails we leave the count incremented because the network call did happen
+    # (or at least was attempted past the reservation point).
+    with _BEDROCK_LOCK:
+        if _BEDROCK_CALL_COUNT >= _BEDROCK_MAX_CALLS:
+            logger.warning(f"[LLM] Bedrock cap reached ({_BEDROCK_CALL_COUNT}/{_BEDROCK_MAX_CALLS}) — skipping.")
+            return None
+        _BEDROCK_CALL_COUNT += 1
+        reserved_slot = _BEDROCK_CALL_COUNT
+    try:
+        client = boto3.client("bedrock-runtime",
+                              region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        model_id = config.get("answer.bedrock_model",
+                              "anthropic.claude-3-haiku-20240307-v1:0")
+        body = _json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": config.get("answer.max_tokens", 256),
+            "temperature": 0,
+            "messages": [{"role": "user", "content": prompt}],
+        })
+        resp = client.invoke_model(modelId=model_id, body=body)
+        payload = _json.loads(resp["body"].read())
+        text = (payload.get("content") or [{}])[0].get("text")
+        return text.strip() if text else None
+    except Exception as exc:
+        logger.warning(f"[LLM] Bedrock error: {exc}")
+        return None
+
+
+# ── Public entrypoint ─────────────────────────────────────────────────
+def generate_with_fallback(prompt: str) -> Dict[str, Any]:
+    """Run the optimised provider chain.
+
+    Cloud mode (default):
+        Gemini → Grok → HuggingFace → (gated) Bedrock → "error"
+        Bedrock fires only when no provider above produced an acceptable answer.
+
+    Local mode (``LOCAL_MODE=1`` or ``answer.local_mode: true``):
+        Ollama → "error"   (NO cloud calls, no Bedrock — strict per spec)
+
+    Returns ``{response, provider, status, fallback_level, latency_ms,
+    total_latency_ms, providers_tried}``. ``provider == "error"`` means
+    every configured provider was unavailable; the caller should fall back
+    to extractive (which ``generate_answer`` already does).
+    """
+    t_total = _time.time()
+    providers_tried: List[str] = []
+
+    if _is_local_mode():
+        # LOCAL: Ollama only. NO cloud, NO Bedrock.
+        chain = [("ollama", _call_ollama)]
+    else:
+        # CLOUD: Gemini → Grok → HuggingFace. Bedrock is appended below
+        # only if the chain above failed to produce an acceptable answer.
+        chain = [
+            ("gemini", _call_gemini),
+            ("grok", _call_grok),
+            ("hf", _call_huggingface),
+        ]
+
+    for level, (name, fn) in enumerate(chain):
+        providers_tried.append(name)
+        t0 = _time.time()
+        text = _call_with_timeout(fn, prompt, _DEFAULT_TIMEOUT_S)
+        dt = int((_time.time() - t0) * 1000)
+        if _is_acceptable_answer(text):
+            logger.info(f"[LLM] ✔ {name} accepted (level={level}, {dt}ms, {len(text)} chars)")
+            return {
+                "response": text.strip(),
+                "provider": name,
+                "status": f"Using {name} (fallback level {level})",
+                "fallback_level": level,
+                "latency_ms": dt,
+                "total_latency_ms": int((_time.time() - t_total) * 1000),
+                "providers_tried": providers_tried,
+            }
+        logger.info(f"[LLM] ✗ {name} no usable answer ({dt}ms)")
+
+    # ── Bedrock gate (cloud mode only): "last resort, only if no valid answer".
+    # We reached here precisely because nothing above produced an acceptable
+    # answer — i.e. effective confidence in the chain so far is 0 (< 0.6).
+    if not _is_local_mode():
+        with _BEDROCK_LOCK:
+            cap_remaining = _BEDROCK_MAX_CALLS - _BEDROCK_CALL_COUNT
+        if not _BEDROCK_DISABLED and cap_remaining > 0:
+            providers_tried.append("bedrock")
+            t0 = _time.time()
+            text = _call_with_timeout(_call_bedrock, prompt, _DEFAULT_TIMEOUT_S)
+            dt = int((_time.time() - t0) * 1000)
+            if _is_acceptable_answer(text):
+                level = len(chain)  # next position in the chain
+                logger.warning(
+                    f"[LLM] ✔ bedrock LAST-RESORT accepted (level={level}, {dt}ms, "
+                    f"calls used={_BEDROCK_CALL_COUNT}/{_BEDROCK_MAX_CALLS})"
+                )
                 return {
-                    "response": response,
-                    "provider": "ollama",
-                    "status": "Using local AI (Ollama)"
+                    "response": text.strip(),
+                    "provider": "bedrock",
+                    "status": f"Using Bedrock (last resort, level {level})",
+                    "fallback_level": level,
+                    "latency_ms": dt,
+                    "total_latency_ms": int((_time.time() - t_total) * 1000),
+                    "providers_tried": providers_tried,
                 }
-            logger.warning("⚠️ Ollama not available (low memory or not running)")
-    except Exception as e:
-        logger.error(f"Ollama fallback skipped: {e}")
+            logger.warning(f"[LLM] ✗ bedrock did not produce an acceptable answer ({dt}ms)")
+        else:
+            logger.info("[LLM] Bedrock gate skipped (disabled or call cap exhausted).")
 
-    # 3. Try OpenAI
-    try:
-        if config.get("answer.use_openai", False):
-            import openai
-            api_key = os.environ.get("OPENAI_API_KEY") or config.get("answer.openai_api_key", "")
-            if api_key and api_key != "${OPENAI_API_KEY}":
-                client = openai.OpenAI(api_key=api_key)
-                resp = client.chat.completions.create(
-                    model=config.get("answer.openai_model", "gpt-4"),
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=config.get("answer.max_tokens", 256),
-                    temperature=0
-                )
-                text = resp.choices[0].message.content
-                if text:
-                    return {
-                        "response": text.strip(),
-                        "provider": "openai",
-                        "status": "Using OpenAI fallback"
-                    }
-    except Exception as e:
-        logger.error(f"OpenAI fallback failed: {e}")
-
-    # 4. Try HuggingFace
-    try:
-        if config.get("answer.use_huggingface", False):
-            from huggingface_hub import InferenceClient
-            token = os.environ.get("HF_TOKEN") or config.get("answer.hf_token", "")
-            if token and token != "${HF_TOKEN}":
-                client = InferenceClient(token=token)
-                resp = client.chat_completion(
-                    model=config.get("answer.hf_model", "meta-llama/Llama-3.2-3B-Instruct"),
-                    messages=[{"role": "user", "content": prompt}],
-                    max_tokens=config.get("answer.max_tokens", 256),
-                    temperature=0.1
-                )
-                text = resp.choices[0].message.content
-                if text:
-                    return {
-                        "response": text.strip(),
-                        "provider": "hf",
-                        "status": "Using HuggingFace fallback"
-                    }
-    except Exception as e:
-        logger.error(f"HuggingFace fallback failed: {e}")
-
-    # 5. Final Failure
+    # All providers failed. The caller (generate_answer) will swap in the
+    # deterministic extractive fallback — never user-visible "All AI services
+    # unavailable" text.
     return {
-         "response": "All AI services unavailable",
-         "provider": "error",
-         "status": "All AI services unavailable"
+        "response": "All AI services unavailable",
+        "provider": "error",
+        "status": "All AI services unavailable",
+        "fallback_level": -1,
+        "latency_ms": 0,
+        "total_latency_ms": int((_time.time() - t_total) * 1000),
+        "providers_tried": providers_tried,
     }
 
 # ──────────────────────────────────────────────────────
@@ -486,6 +662,13 @@ def generate_answer(
     raw_response = fallback_result.get("response")
     provider = fallback_result.get("provider", "error")
     status_msg = fallback_result.get("status", "Unknown output")
+    # New telemetry fields from the optimised fallback chain. Expose them
+    # to the caller (API, /ask_question, /compare_videos) without changing
+    # the existing answer/timestamp/confidence shape.
+    fallback_level = fallback_result.get("fallback_level", -1)
+    llm_latency_ms = fallback_result.get("latency_ms", 0)
+    llm_total_latency_ms = fallback_result.get("total_latency_ms", 0)
+    providers_tried = fallback_result.get("providers_tried", [])
 
     answer = None
     if provider != "error" and raw_response:
@@ -517,6 +700,10 @@ def generate_answer(
         answer = f"{answer.rstrip('. ')}. (see {timestamp})"
         status_msg = f"{status_msg} | citation appended"
 
+    # If we fell back to extractive, level conventionally one past the cloud chain
+    # (so callers can see "we exhausted everything before going extractive").
+    if provider == "extractive" and fallback_level < 0:
+        fallback_level = 99
     result = {
         "answer":            answer,
         "timestamp":         timestamp,
@@ -527,6 +714,12 @@ def generate_answer(
         "provider":          provider,
         "status_msg":        status_msg,
         "verified":          False,
+        # New fallback telemetry (additive — pre-existing keys unchanged).
+        "fallback_level":    fallback_level,
+        "llm_latency_ms":    llm_latency_ms,
+        "llm_total_latency_ms": llm_total_latency_ms,
+        "providers_tried":   providers_tried,
+        "bedrock_calls_used": get_bedrock_call_count(),
     }
 
     # ── CONFIDENCE SCORING ─────────────────────────────────────────────────

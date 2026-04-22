@@ -90,6 +90,12 @@ class AskOut(BaseModel):
     neighbors: List[Dict[str, Any]] = []
     cached: bool = False
     latency_ms: int = 0
+    # Optimised fallback telemetry (additive). All optional so older clients
+    # that ignore them keep working.
+    fallback_level: Optional[int] = None
+    llm_latency_ms: Optional[int] = None
+    providers_tried: List[str] = []
+    bedrock_calls_used: Optional[int] = None
 
 
 # ── Misc ───────────────────────────────────────────────────────────────

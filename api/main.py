@@ -395,6 +395,10 @@ def ask_question(
         neighbors=result.get("neighbors", []) or [],
         cached=bool(result.get("cached", False)),
         latency_ms=latency_ms,
+        fallback_level=result.get("fallback_level"),
+        llm_latency_ms=result.get("llm_latency_ms"),
+        providers_tried=result.get("providers_tried", []) or [],
+        bedrock_calls_used=result.get("bedrock_calls_used"),
     )
 
 

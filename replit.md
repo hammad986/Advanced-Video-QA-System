@@ -138,3 +138,24 @@ produced by the gating step.
 - **UI:** new per-card topic-strength pill, Recommendation card (beginner/
   revision picks + explanation), and Key-differences list rendered below
   the per-video grid. Empty/withheld states render the explanation only.
+
+## Optimised Multi-Provider Fallback (Apr 2026)
+Cost/latency-controlled answer chain in `video_qa/answer_generator.py` and
+rewrite chain in `video_qa/query_rewriter.py`.
+- **Query rewrite:** Gemini ONLY → deterministic `_rule_based_rewrite`
+  (filler-strip, contraction expansion, whitespace collapse, no LLM, no
+  network). Bedrock and other LLMs are intentionally excluded.
+- **Answer cloud chain:** Gemini → Grok (x.ai, OpenAI-compat HTTP) →
+  HuggingFace → **gated Bedrock** (Claude Haiku via boto3) → extractive.
+  Bedrock fires only when no provider above produced an acceptable answer
+  AND the per-process cap (`BEDROCK_MAX_CALLS`, default 5) is not reached.
+- **Local mode** (`LOCAL_MODE=1` or `answer.local_mode: true`): Ollama only,
+  no cloud calls, no Bedrock.
+- **Per-call budget:** 2 s wall-clock cap via a module-level
+  `ThreadPoolExecutor` (`LLM_CALL_TIMEOUT_SECONDS` overrides).
+- **Acceptability gate:** non-empty, length ≥ 5, not the not-found sentinel
+  and not the all-providers-down error string.
+- **Telemetry:** `generate_with_fallback` returns `provider`,
+  `fallback_level`, `latency_ms`, `total_latency_ms`, `providers_tried`;
+  `generate_answer` adds `bedrock_calls_used`; surfaced through `AskOut`
+  (additive, optional) so the UI / clients can audit cost & path.
