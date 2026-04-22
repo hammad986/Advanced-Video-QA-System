@@ -1,0 +1,175 @@
+You are a senior production AI systems auditor.
+
+Your task is to perform a FINAL, DEEP, END-TO-END VALIDATION of this system.
+
+---
+
+## 🎯 OBJECTIVE
+
+Determine whether this system is:
+
+* fully working
+* bug-free
+* stable
+* production-ready
+
+---
+
+## ⚠️ STRICT RULES
+
+* Do NOT assume anything works
+* Do NOT skip any component
+* Do NOT give generic answers
+* If any issue exists → report it clearly
+* Be brutally honest
+
+---
+
+## 🔍 VALIDATION TASKS
+
+### 1. FULL PIPELINE TEST (CRITICAL)
+
+Verify end-to-end:
+
+User → Query Rewrite → Retrieval → LLM Fallback Chain → Answer → Output
+
+Test with:
+
+* valid query
+* irrelevant query
+* empty query
+* long query
+
+---
+
+### 2. FALLBACK CHAIN VALIDATION
+
+Test each provider explicitly:
+
+* Gemini works?
+* Grok fallback triggers?
+* HuggingFace fallback works?
+* Bedrock is ONLY triggered when required?
+* Extractive fallback works?
+
+Check:
+
+* providers_tried is correct
+* fallback_level is correct
+* latency is within expected range
+
+---
+
+### 3. LOCAL MODE TEST
+
+Set LOCAL_MODE=1
+
+Verify:
+
+* Only Ollama is used
+* No cloud API calls
+* System still works end-to-end
+
+---
+
+### 4. EDGE CASE TESTING
+
+Test:
+
+* no embeddings
+* missing chunks
+* invalid video_id
+* empty retrieval
+* LLM failure
+
+System must:
+
+* NOT crash
+* return safe response
+
+---
+
+### 5. MULTI-VIDEO COMPARISON TEST
+
+Test all cases:
+
+* same topic → COMPARABLE
+* different topic → NOT_COMPARABLE
+* weak data → INSUFFICIENT
+* partial overlap → PARTIAL
+
+Verify:
+
+* correct status
+* correct reasoning
+* no hallucination
+
+---
+
+### 6. SECURITY CHECK
+
+Verify:
+
+* user isolation
+* no cross-user data leak
+* auth required everywhere
+
+---
+
+### 7. PERFORMANCE CHECK
+
+Measure:
+
+* average latency
+* fallback chain delay
+* unnecessary API calls
+
+---
+
+### 8. BUG DETECTION
+
+Find:
+
+* hidden bugs
+* race conditions
+* incorrect logic
+* broken imports
+* unused code
+
+---
+
+## 📊 OUTPUT FORMAT
+
+### ✅ WORKING COMPONENTS
+
+(list everything that works)
+
+### ❌ ISSUES FOUND
+
+(list ALL issues clearly)
+
+### ⚠️ WEAK AREAS
+
+(optional improvements)
+
+### 🧪 TEST RESULTS
+
+(show actual outputs)
+
+### 🏁 FINAL VERDICT
+
+Choose ONE:
+
+* "SYSTEM IS PRODUCTION READY"
+* "SYSTEM HAS CRITICAL ISSUES"
+
+---
+
+## 🚨 FINAL INSTRUCTION
+
+Your job is NOT to be nice.
+Your job is to ensure NOTHING is broken.
+
+---
+
+BEGIN FINAL AUDIT.
