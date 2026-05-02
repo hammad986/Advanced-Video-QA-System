@@ -9,8 +9,10 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 - **Language**: Python 3.12
 - **API**: FastAPI + uvicorn (REST surface on port 5000)
 - **UI**: Static HTML/JS at `api/static/index.html` served at `/ui`
-- **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing + OTP password reset
-- **App DB**: SQLite at `data/saas.db` (users, videos, rate limit events)
+- **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing + OTP password reset + Google OAuth
+- **App DB**: PostgreSQL (primary, `DATABASE_URL` env var) with SQLite fallback at `data/saas.db`
+- **Background Jobs**: Python `threading.Queue` in-process worker (default); RQ + real Redis if `REDIS_URL` set
+- **Storage**: Local filesystem at `data/media/` (default); S3 if `USE_S3=true` + AWS creds set
 - **Embeddings**: `BAAI/bge-small-en` (via sentence-transformers)
 - **Vector Store**: FAISS (CPU)
 - **Speech-to-Text**: faster-whisper (Whisper tiny model)
@@ -30,15 +32,21 @@ Workflow: `Start application` in `.replit`
 
 ```
 api/
-  main.py           # FastAPI app + all routes
-  schemas.py        # Pydantic request/response models
-  auth.py           # pbkdf2_sha256 + JWT + OTP utilities
-  db.py             # SQLite (users, videos, rate_limit_events)
-  compare.py        # Multi-video compare endpoint
-  compare_gating.py # Comparability gating logic
-  compare_ranking.py# Topic-strength ranking
+  main.py             # FastAPI app + all routes
+  schemas.py          # Pydantic request/response models
+  auth.py             # pbkdf2_sha256 + JWT + OTP utilities
+  db.py               # PostgreSQL/SQLite (users, videos, rate_limit_events + job progress)
+  compare.py          # Multi-video compare endpoint
+  compare_gating.py   # Comparability gating logic
+  compare_ranking.py  # Topic-strength ranking
+  jobs.py             # threading.Queue worker (RQ+Redis if REDIS_URL set)
+  storage.py          # Local / S3 file storage abstraction
+  pipeline_singleton.py  # Shared pipeline instance + index_write_lock
   static/
-    index.html      # Static frontend (served at /ui)
+    index.html        # Static frontend (served at /ui) — sidebar + player + progress polling
+
+workers/
+  video_worker.py     # 6-stage background job: queued→validating→normalizing→transcribing→indexing→ready
 
 video_qa/           # Core RAG pipeline package
   pipeline.py       # 9-stage RAG pipeline orchestrator
@@ -91,10 +99,12 @@ requirements.txt    # Python dependencies
 ### Videos
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | /upload_video | Upload a video/audio file (auth, max 300 MB) |
-| POST | /process_video | Transcribe + index an uploaded video (auth) |
+| POST | /upload_video | Upload a video/audio file (auth, max 300 MB). Returns immediately with `job_id` + `file_url`. |
+| GET  | /job_status/{job_id} | Poll background job progress: `{status, progress, stage, file_url, error}` (auth) |
+| GET  | /media/{path} | Serve stored media file — requires `?token=<jwt>` query param (auth via query param) |
+| POST | /process_video | Transcribe + index an uploaded video (legacy, synchronous, auth) |
 | POST | /process_url | Download + index a YouTube URL (auth, rate-limited, max 200 MB / 30 min) |
-| GET | /videos | List current user's videos (auth) |
+| GET  | /videos | List current user's videos with `job_id`, `progress`, `stage`, `file_url` (auth) |
 
 ### Q&A
 | Method | Path | Description |

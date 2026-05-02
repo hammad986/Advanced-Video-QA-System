@@ -9,213 +9,235 @@
   :root {
     --bg:#0b0f14; --panel:#141b24; --panel2:#0d1218; --line:#22303f;
     --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; --acc-dim:#2a4a78;
-    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80;
-    --best:#ffd166;
+    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80; --best:#ffd166;
   }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",
-         system-ui,sans-serif; background:var(--bg); color:var(--fg);
-         font-size:14px; line-height:1.45; }
-  header { padding:14px 22px; border-bottom:1px solid var(--line);
-           display:flex; align-items:center; gap:18px; position:sticky;
-           top:0; background:var(--bg); z-index:10; }
-  header h1 { font-size:16px; margin:0; font-weight:700;
-              letter-spacing:-0.01em; }
-  nav { display:flex; gap:4px; }
-  nav .tab { padding:7px 14px; border-radius:7px; cursor:pointer;
-             font-size:13px; color:var(--mut); user-select:none;
-             transition:background .15s, color .15s; }
+  * { box-sizing:border-box; }
+  html,body { height:100%; margin:0; overflow:hidden; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+         background:var(--bg); color:var(--fg); font-size:14px; line-height:1.45; }
+
+  /* ── Header ── */
+  header { padding:0 18px; height:52px; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; gap:14px;
+           background:var(--bg); position:relative; z-index:10; flex-shrink:0; }
+  header h1 { font-size:15px; margin:0; font-weight:700; letter-spacing:-.01em; }
+  nav { display:flex; gap:3px; }
+  nav .tab { padding:6px 13px; border-radius:6px; cursor:pointer; font-size:13px;
+             color:var(--mut); user-select:none; transition:background .15s,color .15s; }
   nav .tab:hover { color:var(--fg); }
   nav .tab.active { background:var(--panel); color:var(--fg); }
-  main { max-width:1100px; margin:0 auto; padding:24px; }
+  .who { margin-left:auto; font-size:12px; color:var(--mut); white-space:nowrap;
+         overflow:hidden; text-overflow:ellipsis; max-width:200px; }
+
+  /* ── Root layout (header + body) ── */
+  .root-wrap { display:flex; flex-direction:column; height:100vh; }
+
+  /* ── Login page (centered card shown when logged out) ── */
+  #loginWrap { flex:1; overflow-y:auto; display:flex; align-items:flex-start;
+               justify-content:center; padding:40px 16px; }
+  .login-card { width:100%; max-width:440px; }
+
+  /* ── App layout (sidebar + main, shown when logged in) ── */
+  #appWrap { flex:1; display:flex; overflow:hidden; }
+
+  /* ── Sidebar ── */
+  #sidebar { width:264px; min-width:264px; border-right:1px solid var(--line);
+             display:flex; flex-direction:column; overflow:hidden; background:var(--bg); }
+  .sb-head { display:flex; align-items:center; gap:6px; padding:10px 12px;
+             border-bottom:1px solid var(--line); flex-shrink:0; }
+  .sb-title { font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+              color:var(--mut); flex:1; }
+  .sb-upload-label { font-size:12px; padding:5px 10px; border-radius:5px; cursor:pointer;
+                     background:var(--acc); color:#fff; font-weight:600;
+                     transition:filter .15s; white-space:nowrap; user-select:none; }
+  .sb-upload-label:hover { filter:brightness(1.12); }
+  .sb-refresh { width:28px; height:28px; padding:0; background:transparent;
+                border:1px solid var(--line); border-radius:5px; color:var(--mut);
+                font-size:14px; cursor:pointer; flex-shrink:0; transition:color .15s; }
+  .sb-refresh:hover { color:var(--fg); border-color:var(--mut); }
+
+  .sb-list { flex:1; overflow-y:auto; padding:6px; min-height:0; }
+
+  /* Sidebar video items */
+  .sv-item { padding:7px 9px; border-radius:6px; cursor:pointer;
+             border:1px solid transparent; margin-bottom:2px;
+             transition:background .1s,border-color .1s; }
+  .sv-item:hover { background:var(--panel2); }
+  .sv-item.sv-active { border-color:var(--acc-dim); background:#0d1825; }
+  .sv-row { display:flex; align-items:center; gap:7px; }
+  .sv-check { width:14px; height:14px; flex-shrink:0; cursor:pointer;
+              accent-color:var(--acc); }
+  .sv-name { flex:1; font-size:12px; word-break:break-all; line-height:1.35; color:var(--fg); }
+  .sv-badge { font-size:10px; padding:2px 6px; border-radius:3px; flex-shrink:0;
+              text-transform:uppercase; letter-spacing:.03em; font-weight:700; }
+  .sv-badge.ready   { background:#1a3826; color:var(--ok); }
+  .sv-badge.queued,.sv-badge.uploaded,.sv-badge.processing
+                    { background:#3a2c14; color:var(--warn); }
+  .sv-badge.failed  { background:#3a1c1c; color:var(--err); }
+  .sv-prog-wrap { margin-top:5px; padding-left:21px; }
+  .sv-prog { height:3px; background:#1a2230; border-radius:2px; overflow:hidden;
+             margin-bottom:3px; }
+  .sv-prog-bar { height:100%; background:var(--acc); transition:width .4s; }
+  .sv-stage { font-size:10px; color:var(--mut); }
+  .sb-empty { padding:22px 14px; text-align:center; color:var(--mut); font-size:12px;
+              line-height:1.6; }
+
+  /* Upload progress placeholder */
+  .sv-uploading { display:flex; align-items:center; gap:7px;
+                  padding:8px 9px; font-size:12px; color:var(--mut); }
+
+  /* Sidebar player */
+  #playerWrap { border-top:1px solid var(--line); padding:10px; flex-shrink:0;
+                background:var(--panel2); }
+  #videoPlayer { width:100%; border-radius:5px; background:#000;
+                 max-height:170px; display:block; }
+  .sb-playing-name { font-size:11px; color:var(--mut); margin-top:5px;
+                     word-break:break-all; line-height:1.35; }
+  #uploadBar { padding:8px 12px; border-top:1px solid var(--line);
+               font-size:12px; color:var(--mut); flex-shrink:0; }
+  .up-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+  .up-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .up-prog { height:3px; background:#1a2230; border-radius:2px; overflow:hidden; }
+  .up-prog-bar { height:100%; background:var(--acc); transition:width .3s; }
+
+  /* ── Main content ── */
+  .app-main { flex:1; overflow-y:auto; padding:22px 26px; min-width:0; }
+  .app-main > .card { max-width:840px; }
+  main { max-width:840px; } /* for login page */
+
+  /* ── Cards ── */
   .card { background:var(--panel); border:1px solid var(--line);
           border-radius:10px; padding:18px; margin-bottom:18px; }
-  .card h2 { margin:0 0 12px; font-size:15px; font-weight:600; }
-  .card .sub { font-size:12px; color:var(--mut); margin:-6px 0 14px; }
-  label { display:block; font-size:12px; color:var(--mut);
-          margin:10px 0 4px; font-weight:500; }
-  input, textarea, select, button {
+  .card h2 { margin:0 0 10px; font-size:15px; font-weight:600; }
+  .card .sub { font-size:12px; color:var(--mut); margin:-4px 0 14px; }
+  label { display:block; font-size:12px; color:var(--mut); margin:10px 0 4px; font-weight:500; }
+  input,textarea,select,button {
     font-family:inherit; font-size:14px; color:var(--fg);
     background:var(--panel2); border:1px solid var(--line);
     border-radius:6px; padding:10px 12px; width:100%; outline:none;
   }
-  input:focus, textarea:focus, select:focus { border-color:var(--acc); }
+  input:focus,textarea:focus,select:focus { border-color:var(--acc); }
   textarea { resize:vertical; min-height:70px; }
   button { background:var(--acc); border-color:var(--acc); color:#fff;
-           cursor:pointer; font-weight:600;
-           transition:filter .15s, opacity .15s; }
+           cursor:pointer; font-weight:600; transition:filter .15s,opacity .15s; }
   button:hover:not(:disabled) { filter:brightness(1.1); }
   button:disabled { opacity:.5; cursor:not-allowed; }
-  button.ghost { background:transparent; color:var(--mut);
-                 border-color:var(--line); }
+  button.ghost { background:transparent; color:var(--mut); border-color:var(--line); }
   button.ghost:hover:not(:disabled) { color:var(--fg); }
   .row { display:flex; gap:10px; flex-wrap:wrap; }
   .row > * { flex:1; min-width:0; }
-  .vid-list { max-height:280px; overflow-y:auto; border:1px solid var(--line);
-              border-radius:6px; padding:6px; background:var(--panel2); }
-  .vid-row { display:flex; gap:10px; align-items:center;
-             padding:9px 10px; border-radius:5px; cursor:pointer; }
-  .vid-row:hover { background:#1a2230; }
-  .vid-row input { width:auto; cursor:pointer; }
-  .vid-row .name { flex:1; font-size:13px; word-break:break-all; }
-  .vid-row .status { font-size:11px; padding:2px 7px; border-radius:3px;
-                     background:#1a2230; color:var(--mut);
-                     text-transform:uppercase; letter-spacing:0.03em;
-                     font-weight:600; }
-  .vid-row .status.ready { background:#1a3826; color:var(--ok); }
-  .vid-row .status.uploaded, .vid-row .status.processing { background:#3a2c14; color:var(--warn); }
-  .vid-row .status.failed { background:#3a1c1c; color:var(--err); }
-  .small { font-size:12px; color:var(--mut); }
-  .empty { padding:28px 16px; text-align:center; }
-  .empty .icon { font-size:28px; opacity:.5; margin-bottom:8px; }
-  .empty .ttl { font-size:14px; font-weight:600; margin-bottom:4px; }
-  .empty .body { font-size:12px; color:var(--mut); line-height:1.6; }
-  .empty code { background:#1a2230; padding:1px 6px; border-radius:3px;
-                font-size:11px; }
 
+  /* ── Answer / comparison UI ── */
   .answer { background:var(--panel2); border-left:3px solid var(--acc);
             padding:14px 16px; border-radius:6px; line-height:1.6;
             white-space:pre-wrap; word-wrap:break-word; }
-
-  /* Compare result polish */
-  .status-banner { display:flex; align-items:center; gap:10px;
-                   padding:12px 14px; border-radius:8px; margin-bottom:14px;
-                   border:1px solid var(--line); background:var(--panel2); }
-  .status-banner.s-COMPARABLE { border-color:#1a5e34; background:#0e1f17; }
-  .status-banner.s-PARTIAL { border-color:#5e4a1a; background:#1f1a0e; }
-  .status-banner.s-NOT_COMPARABLE { border-color:#5e1a1a; background:#1f0e0e; }
+  .status-banner { display:flex; align-items:center; gap:10px; padding:12px 14px;
+                   border-radius:8px; margin-bottom:14px; border:1px solid var(--line);
+                   background:var(--panel2); }
+  .status-banner.s-COMPARABLE   { border-color:#1a5e34; background:#0e1f17; }
+  .status-banner.s-PARTIAL      { border-color:#5e4a1a; background:#1f1a0e; }
+  .status-banner.s-NOT_COMPARABLE{ border-color:#5e1a1a; background:#1f0e0e; }
   .status-banner.s-INSUFFICIENT { border-color:#3a3a3a; background:#161616; }
-  .badge { font-size:11px; padding:3px 9px; border-radius:11px;
-           font-weight:700; letter-spacing:.04em; flex-shrink:0; }
-  .badge.s-COMPARABLE { background:var(--ok); color:#0a1a10; }
-  .badge.s-PARTIAL { background:var(--warn); color:#2a1c08; }
-  .badge.s-NOT_COMPARABLE { background:var(--err); color:#fff; }
-  .badge.s-INSUFFICIENT { background:#4a4a4a; color:#fff; }
+  .badge { font-size:11px; padding:3px 9px; border-radius:11px; font-weight:700;
+           letter-spacing:.04em; flex-shrink:0; }
+  .badge.s-COMPARABLE    { background:var(--ok);   color:#0a1a10; }
+  .badge.s-PARTIAL       { background:var(--warn); color:#2a1c08; }
+  .badge.s-NOT_COMPARABLE{ background:var(--err);  color:#fff; }
+  .badge.s-INSUFFICIENT  { background:#4a4a4a;    color:#fff; }
   .reason-text { flex:1; font-size:13px; line-height:1.5; }
   .meta { font-size:11px; color:var(--mut); margin-bottom:14px;
           display:flex; gap:14px; flex-wrap:wrap; }
   .meta b { color:var(--fg); font-weight:600; }
-
   .pv-grid { display:grid; gap:12px; margin-top:14px;
              grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); }
-  .pv { background:var(--panel2); border:1px solid var(--line);
-        border-radius:8px; padding:14px; position:relative;
-        transition:border-color .15s; }
+  .pv { background:var(--panel2); border:1px solid var(--line); border-radius:8px;
+        padding:14px; position:relative; transition:border-color .15s; }
   .pv.best { border-color:var(--best); box-shadow:0 0 0 1px var(--best); }
-  .pv .best-tag { position:absolute; top:-9px; right:12px;
-                  background:var(--best); color:#2a1c08; font-size:10px;
-                  font-weight:700; letter-spacing:.05em;
+  .pv .best-tag { position:absolute; top:-9px; right:12px; background:var(--best);
+                  color:#2a1c08; font-size:10px; font-weight:700; letter-spacing:.05em;
                   padding:2px 8px; border-radius:9px; }
-  .pv .head { display:flex; justify-content:space-between;
-              align-items:baseline; gap:10px; margin-bottom:10px; }
-  .pv .head .fn { font-weight:600; font-size:14px; word-break:break-all;
-                  flex:1; min-width:0; }
+  .pv .head { display:flex; justify-content:space-between; align-items:baseline;
+              gap:10px; margin-bottom:10px; }
+  .pv .head .fn { font-weight:600; font-size:14px; word-break:break-all; flex:1; min-width:0; }
   .pv .head .cf { font-size:11px; color:var(--mut); flex-shrink:0; }
-  .conf-bar { height:6px; background:#1a2230; border-radius:3px;
-              margin:6px 0 10px; overflow:hidden; }
+  .conf-bar { height:6px; background:#1a2230; border-radius:3px; margin:6px 0 10px; overflow:hidden; }
   .conf-bar > div { height:100%; transition:width .35s; }
   .conf-bar > div.c-hi { background:var(--ok); }
   .conf-bar > div.c-md { background:var(--warn); }
   .conf-bar > div.c-lo { background:var(--err); }
-  .pv .explanation { font-size:13px; color:#d0d6dd; line-height:1.55;
-                     min-height:1.55em; }
+  .pv .explanation { font-size:13px; color:#d0d6dd; line-height:1.55; min-height:1.55em; }
   .pv .ts-row { margin-top:10px; display:flex; flex-wrap:wrap; gap:5px; }
-  .pv .strength { display:flex; align-items:center; gap:6px;
-                  font-size:11px; color:var(--mut); margin-top:8px; }
-  .pv .strength .pill { background:#1a2230; color:var(--fg);
-                        padding:2px 7px; border-radius:9px;
-                        font-family:ui-monospace,Menlo,monospace; font-size:10px; }
-
-  /* Recommendation card */
+  .pv .strength { display:flex; align-items:center; gap:6px; font-size:11px;
+                  color:var(--mut); margin-top:8px; }
+  .pv .strength .pill { background:#1a2230; color:var(--fg); padding:2px 7px;
+                        border-radius:9px; font-family:ui-monospace,Menlo,monospace; font-size:10px; }
   .rec-card { display:grid; gap:10px; margin-top:14px;
               grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
-  .rec { background:var(--panel2); border:1px solid var(--line);
-         border-left:3px solid var(--acc); border-radius:6px;
-         padding:12px 14px; }
+  .rec { background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--acc);
+         border-radius:6px; padding:12px 14px; }
   .rec.beginner { border-left-color:var(--ok); }
-  .rec.revision { border-left-color:var(--best); }
+  .rec.revision  { border-left-color:var(--best); }
   .rec .lbl { font-size:10px; letter-spacing:.08em; text-transform:uppercase;
               color:var(--mut); font-weight:700; margin-bottom:6px; }
   .rec .body { font-size:13px; line-height:1.5; }
   .rec-explanation { font-size:12px; color:var(--mut); margin-top:8px;
                      padding:8px 12px; background:var(--panel2);
                      border:1px dashed var(--line); border-radius:6px; }
-
-  /* Differences list */
   .diffs { margin-top:14px; }
   .diffs ul { margin:0; padding-left:20px; font-size:13px; line-height:1.7; }
   .diffs li { color:#d0d6dd; }
   .diffs li::marker { color:var(--acc); }
-  .ts { display:inline-flex; align-items:center; gap:4px;
-        background:#1a2230; color:var(--fg);
-        font-family:ui-monospace,Menlo,monospace; font-size:11px;
-        padding:3px 8px; border-radius:4px; cursor:pointer;
-        border:1px solid transparent; transition:border-color .15s, background .15s; }
-  .ts:hover { border-color:var(--acc); background:#22324a; }
-  .ts.copied { border-color:var(--ok); color:var(--ok); }
-
-  /* Diff highlight (Compare) */
-  .scores-grid { display:grid; gap:6px; margin-top:8px;
-                 grid-template-columns:1fr; font-size:12px; }
+  .scores-grid { display:grid; gap:6px; margin-top:8px; grid-template-columns:1fr; font-size:12px; }
   .score-row { display:flex; align-items:center; gap:8px; }
   .score-row .vname { flex:1; color:var(--mut); word-break:break-all; }
-  .score-row .vbar { width:120px; height:5px; background:#1a2230;
-                     border-radius:3px; overflow:hidden; flex-shrink:0; }
+  .score-row .vbar  { width:120px; height:5px; background:#1a2230;
+                      border-radius:3px; overflow:hidden; flex-shrink:0; }
   .score-row .vbar > div { height:100%; background:var(--acc); }
-  .score-row .vval { width:46px; text-align:right;
-                     font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+  .score-row .vval  { width:46px; text-align:right;
+                      font-family:ui-monospace,Menlo,monospace; font-size:11px; }
+  .ts { display:inline-flex; align-items:center; gap:4px; background:#1a2230;
+        color:var(--fg); font-family:ui-monospace,Menlo,monospace; font-size:11px;
+        padding:3px 8px; border-radius:4px; cursor:pointer; border:1px solid transparent;
+        transition:border-color .15s,background .15s; }
+  .ts:hover  { border-color:var(--acc); background:#22324a; }
+  .ts.copied { border-color:var(--ok); color:var(--ok); }
 
-  .err { color:var(--err); font-size:13px; margin-top:8px;
-         padding:10px 12px; background:#2a1414; border:1px solid #5e1a1a;
-         border-radius:6px; }
-  .ok  { color:var(--ok);  font-size:13px; margin-top:8px;
-         padding:10px 12px; background:#0e1f17; border:1px solid #1a5e34;
-         border-radius:6px; }
-  .info { font-size:13px; margin-top:8px;
-          padding:10px 12px; background:var(--panel2);
-          border:1px solid var(--line); border-radius:6px;
-          color:var(--mut); }
-
+  /* ── Utility ── */
+  .err  { color:var(--err); font-size:13px; margin-top:8px; padding:10px 12px;
+          background:#2a1414; border:1px solid #5e1a1a; border-radius:6px; }
+  .ok   { color:var(--ok);  font-size:13px; margin-top:8px; padding:10px 12px;
+          background:#0e1f17; border:1px solid #1a5e34; border-radius:6px; }
+  .info { font-size:13px; margin-top:8px; padding:10px 12px; background:var(--panel2);
+          border:1px solid var(--line); border-radius:6px; color:var(--mut); }
   .hidden { display:none !important; }
-  .spin { display:inline-block; width:12px; height:12px;
-          border:2px solid var(--line); border-top-color:var(--acc);
-          border-radius:50%; animation:s 0.8s linear infinite;
-          vertical-align:-2px; margin-right:6px; }
+  .spin { display:inline-block; width:12px; height:12px; border:2px solid var(--line);
+          border-top-color:var(--acc); border-radius:50%;
+          animation:s 0.8s linear infinite; vertical-align:-2px; margin-right:6px; }
   @keyframes s { to { transform:rotate(360deg); } }
-  .who { margin-left:auto; font-size:12px; color:var(--mut); }
   .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
-           background:var(--panel); border:1px solid var(--line);
-           padding:10px 16px; border-radius:8px; font-size:13px;
-           box-shadow:0 10px 30px rgba(0,0,0,.4); opacity:0;
-           transition:opacity .2s, transform .2s; pointer-events:none;
-           z-index:100; }
+           background:var(--panel); border:1px solid var(--line); padding:10px 16px;
+           border-radius:8px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4);
+           opacity:0; transition:opacity .2s,transform .2s; pointer-events:none; z-index:100; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
 
-  .divider {
-    display:flex; align-items:center; gap:10px;
-    margin:18px 0 2px; color:var(--mut); font-size:12px;
-  }
-  .divider::before, .divider::after {
-    content:""; flex:1; height:1px; background:var(--line);
-  }
-  .btn-google {
-    background:#fff; color:#3c4043; border:1px solid #dadce0;
-    display:flex; align-items:center; justify-content:center;
-    gap:10px; font-weight:500; border-radius:6px;
-    padding:10px 12px; width:100%; cursor:pointer;
-    font-size:14px; font-family:inherit;
-    transition:background .15s, box-shadow .15s;
-    margin-top:10px;
-  }
-  .btn-google:hover:not(:disabled) {
-    filter:none; background:#f8f9fa;
-    box-shadow:0 1px 6px rgba(0,0,0,.22);
-  }
+  /* ── Google button + divider (login page) ── */
+  .divider { display:flex; align-items:center; gap:10px; margin:18px 0 2px;
+             color:var(--mut); font-size:12px; }
+  .divider::before,.divider::after { content:""; flex:1; height:1px; background:var(--line); }
+  .btn-google { background:#fff; color:#3c4043; border:1px solid #dadce0;
+                display:flex; align-items:center; justify-content:center;
+                gap:10px; font-weight:500; border-radius:6px; padding:10px 12px;
+                width:100%; cursor:pointer; font-size:14px; font-family:inherit;
+                transition:background .15s,box-shadow .15s; margin-top:10px; }
+  .btn-google:hover:not(:disabled) { filter:none; background:#f8f9fa;
+                                     box-shadow:0 1px 6px rgba(0,0,0,.22); }
   .btn-google:active:not(:disabled) { background:#f1f3f4; }
   .btn-google svg { flex-shrink:0; }
 </style>
 </head>
 <body>
+<div class="root-wrap">
+
 <header>
   <h1>Video-QA</h1>
   <nav id="tabs">
@@ -225,12 +247,11 @@
   <span class="who" id="who"></span>
 </header>
 
-<main>
-  <!-- Login -->
-  <section id="loginCard" class="card">
+<!-- ── Login page (shown when logged out) ── -->
+<div id="loginWrap">
+  <section class="card login-card" id="loginCard">
     <h2>Sign in</h2>
-    <p class="sub">Use your Video-QA account or create a new one. Tokens are
-       stored in your browser only.</p>
+    <p class="sub">Use your Video-QA account or create a new one. Tokens are stored in your browser only.</p>
     <form id="loginForm" onsubmit="event.preventDefault(); document.getElementById('loginBtn').click();">
       <label>Email</label><input id="email" type="email" autocomplete="email" required/>
       <label>Password</label>
@@ -252,68 +273,95 @@
     </button>
     <div id="authMsg"></div>
   </section>
+</div>
 
-  <!-- ─── ASK TAB ─── -->
-  <section id="askCard" class="card hidden tab-pane" data-tab="ask">
-    <h2>Ask one video</h2>
-    <p class="sub">Pick a single processed video and ask a question.
-       You'll get an answer with confidence, evidence span, and a status flag.</p>
+<!-- ── App layout (shown when logged in) ── -->
+<div id="appWrap" class="hidden">
 
-    <label>Video</label>
-    <select id="askVidSel"><option value="">—</option></select>
-
-    <label>Question</label>
-    <textarea id="askQ"
-      placeholder="e.g. What does the lecture say about overfitting?"></textarea>
-
-    <div class="row" style="margin-top:14px;">
-      <button id="askBtn">Ask</button>
-      <button class="ghost refreshBtn">Refresh videos</button>
-      <button class="ghost logoutBtn">Sign out</button>
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="sb-head">
+      <span class="sb-title">Library</span>
+      <label class="sb-upload-label" for="fileInput" title="Upload a video or audio file">+ Upload</label>
+      <input type="file" id="fileInput" accept="video/*,audio/*,.mp3,.wav,.m4a,.mp4,.mkv,.avi,.mov,.webm" style="display:none">
+      <button class="sb-refresh" onclick="loadVideos()" title="Refresh library">↻</button>
     </div>
-    <div id="askMsg"></div>
-  </section>
 
-  <section id="askResultCard" class="card hidden tab-pane" data-tab="ask">
-    <h2>Answer</h2>
-    <div class="meta" id="askMeta"></div>
-    <div id="askStatusBanner"></div>
-    <div class="answer" id="askAnswer"></div>
-    <div id="askTimestamps" style="margin-top:12px;"></div>
-  </section>
-
-  <!-- ─── COMPARE TAB ─── -->
-  <section id="cmpCard" class="card hidden tab-pane active" data-tab="compare">
-    <h2>Compare videos</h2>
-    <p class="sub">Pick 2 or more processed videos and ask one question. The
-       system checks topic alignment and evidence sufficiency before answering.</p>
-
-    <label>Your videos</label>
-    <div id="cmpVidList" class="vid-list"></div>
-
-    <label>Question</label>
-    <textarea id="cmpQ"
-      placeholder="e.g. How does each lecture define overfitting?"></textarea>
-
-    <div class="row" style="margin-top:14px;">
-      <button id="cmpBtn">Compare</button>
-      <button class="ghost refreshBtn">Refresh videos</button>
-      <button class="ghost logoutBtn">Sign out</button>
+    <div id="videoLibrary" class="sb-list">
+      <div class="sb-empty">Sign in to view your videos.</div>
     </div>
-    <div id="cmpMsg"></div>
-  </section>
 
-  <section id="cmpResultCard" class="card hidden tab-pane" data-tab="compare">
-    <h2>Comparison</h2>
-    <div class="meta" id="cmpMeta"></div>
-    <div id="cmpStatusBanner"></div>
-    <div id="cmpScores"></div>
-    <div class="answer" id="cmpAnswer" style="margin-top:14px;"></div>
-    <div class="pv-grid" id="cmpPerVideo"></div>
-    <div id="cmpRecommendation"></div>
-    <div id="cmpDifferences"></div>
-  </section>
-</main>
+    <div id="playerWrap" class="hidden">
+      <video id="videoPlayer" controls preload="metadata"></video>
+      <div class="sb-playing-name" id="playingName"></div>
+    </div>
+
+    <div id="uploadBar" class="hidden">
+      <div class="up-row">
+        <span class="spin"></span>
+        <span class="up-name" id="uploadFileName">Uploading…</span>
+      </div>
+      <div class="up-prog"><div class="up-prog-bar" id="uploadProgBar" style="width:0%"></div></div>
+    </div>
+
+    <div style="padding:10px 12px; border-top:1px solid var(--line); flex-shrink:0;">
+      <button class="ghost logoutBtn" style="width:100%; font-size:12px; padding:7px 10px;">Sign out</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="app-main">
+
+    <!-- ── ASK TAB ── -->
+    <section id="askCard" class="card hidden tab-pane" data-tab="ask">
+      <h2>Ask one video</h2>
+      <p class="sub">Select a video in the sidebar, pick it below, then ask a question.</p>
+      <label>Video</label>
+      <select id="askVidSel"><option value="">— no ready videos yet —</option></select>
+      <label>Question</label>
+      <textarea id="askQ" placeholder="e.g. What does the lecture say about overfitting?"></textarea>
+      <div class="row" style="margin-top:14px;">
+        <button id="askBtn">Ask</button>
+      </div>
+      <div id="askMsg"></div>
+    </section>
+
+    <section id="askResultCard" class="card hidden tab-pane" data-tab="ask">
+      <h2>Answer</h2>
+      <div class="meta" id="askMeta"></div>
+      <div id="askStatusBanner"></div>
+      <div class="answer" id="askAnswer"></div>
+      <div id="askTimestamps" style="margin-top:12px;"></div>
+    </section>
+
+    <!-- ── COMPARE TAB ── -->
+    <section id="cmpCard" class="card hidden tab-pane active" data-tab="compare">
+      <h2>Compare videos</h2>
+      <p class="sub">Check 2 or more videos in the sidebar library, then ask a question.</p>
+      <div id="cmpSelBanner" class="info">← Select 2 or more videos in the sidebar</div>
+      <label>Question</label>
+      <textarea id="cmpQ" placeholder="e.g. How does each lecture define overfitting?"></textarea>
+      <div class="row" style="margin-top:14px;">
+        <button id="cmpBtn">Compare</button>
+      </div>
+      <div id="cmpMsg"></div>
+    </section>
+
+    <section id="cmpResultCard" class="card hidden tab-pane" data-tab="compare">
+      <h2>Comparison</h2>
+      <div class="meta" id="cmpMeta"></div>
+      <div id="cmpStatusBanner"></div>
+      <div id="cmpScores"></div>
+      <div class="answer" id="cmpAnswer" style="margin-top:14px;"></div>
+      <div class="pv-grid" id="cmpPerVideo"></div>
+      <div id="cmpRecommendation"></div>
+      <div id="cmpDifferences"></div>
+    </section>
+
+  </div><!-- .app-main -->
+</div><!-- #appWrap -->
+
+</div><!-- .root-wrap -->
 
 <div class="toast" id="toast"></div>
 
@@ -322,55 +370,45 @@
 const $ = (id) => document.getElementById(id);
 const TOKEN_KEY = "vqa_token";
 const EMAIL_KEY = "vqa_email";
-let videosCache = [];
-let currentTab = "compare";
 
-// ── Toast ─────────────────────────────────────────────────────────────
-let toastTimer = 0;
+let videosCache   = [];
+let currentTab    = "compare";
+let selectedVidId = null;
+const _pollers    = {};   // jobId → intervalId
+
+// ── Toast ──────────────────────────────────────────────────────────────
+let _toastTimer = 0;
 function toast(txt) {
   const t = $("toast"); t.textContent = txt; t.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-// ── Tabs ──────────────────────────────────────────────────────────────
+// ── Tabs ───────────────────────────────────────────────────────────────
 function switchTab(name) {
   currentTab = name;
   document.querySelectorAll("#tabs .tab").forEach(t => {
     t.classList.toggle("active", t.dataset.tab === name);
   });
-  // Only show panes for the active tab — but keep login card visible if
-  // unauthenticated (login card is not a tab-pane).
   document.querySelectorAll(".tab-pane").forEach(p => {
-    const show = p.dataset.tab === name && !$("loginCard").offsetParent;
-    // We only un-hide app panes if user is logged in. The result card
-    // stays hidden until there's a result, so add the .has-result class
-    // logic via existing classList state.
-    if (p.id === "askResultCard" || p.id === "cmpResultCard") {
-      // result panes manage their own .hidden — only re-hide if switching away
+    const isResult = p.id === "askResultCard" || p.id === "cmpResultCard";
+    if (isResult) {
       if (p.dataset.tab !== name) p.classList.add("hidden");
     } else {
-      p.classList.toggle("hidden", !show);
+      p.classList.toggle("hidden", p.dataset.tab !== name);
     }
   });
 }
-document.querySelectorAll("#tabs .tab").forEach(t => {
-  t.onclick = () => switchTab(t.dataset.tab);
-});
+document.querySelectorAll("#tabs .tab").forEach(t => { t.onclick = () => switchTab(t.dataset.tab); });
 
-// ── HTTP ──────────────────────────────────────────────────────────────
+// ── HTTP ───────────────────────────────────────────────────────────────
 async function api(path, opts = {}) {
-  const headers = Object.assign(
-    { "Content-Type": "application/json" }, opts.headers || {});
+  const headers = Object.assign({ "Content-Type":"application/json" }, opts.headers || {});
   const tok = localStorage.getItem(TOKEN_KEY);
   if (tok) headers["Authorization"] = "Bearer " + tok;
   let r;
-  try {
-    r = await fetch(path, Object.assign({}, opts, { headers }));
-  } catch (netErr) {
-    const e = new Error("Network error — is the server reachable?");
-    e.status = 0; throw e;
-  }
+  try { r = await fetch(path, Object.assign({}, opts, { headers })); }
+  catch (netErr) { const e = new Error("Network error"); e.status = 0; throw e; }
   let body = null;
   try { body = await r.json(); } catch { body = null; }
   if (!r.ok) {
@@ -382,7 +420,6 @@ async function api(path, opts = {}) {
   return body;
 }
 
-// ── Messaging ─────────────────────────────────────────────────────────
 function setMsg(el, txt, kind) {
   if (!txt) { el.innerHTML = ""; return; }
   const cls = kind === "err" ? "err" : kind === "ok" ? "ok" : "info";
@@ -390,7 +427,7 @@ function setMsg(el, txt, kind) {
 }
 function spinHTML(txt) { return `<span class="spin"></span>${escapeHtml(txt)}`; }
 
-// ── Auth ──────────────────────────────────────────────────────────────
+// ── Auth ───────────────────────────────────────────────────────────────
 async function authPost(path) {
   const email = $("email").value.trim();
   const password = $("password").value;
@@ -399,8 +436,7 @@ async function authPost(path) {
   }
   setMsg($("authMsg"), spinHTML(path.includes("register") ? "Creating account…" : "Signing in…"), "info");
   try {
-    const r = await api(path, { method:"POST",
-      body: JSON.stringify({ email, password }) });
+    const r = await api(path, { method:"POST", body: JSON.stringify({ email, password }) });
     localStorage.setItem(TOKEN_KEY, r.access_token);
     localStorage.setItem(EMAIL_KEY, email);
     setMsg($("authMsg"), "");
@@ -409,23 +445,23 @@ async function authPost(path) {
     setMsg($("authMsg"), escapeHtml(e.message), "err");
   }
 }
-$("loginBtn").onclick = () => authPost("/auth/login");
+$("loginBtn").onclick   = () => authPost("/auth/login");
 $("registerBtn").onclick = () => authPost("/auth/register");
-$("googleBtn").onclick = () => { location.href = "/auth/google"; };
+$("googleBtn").onclick   = () => { location.href = "/auth/google"; };
 
 document.querySelectorAll(".logoutBtn").forEach(b => b.onclick = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
+  Object.values(_pollers).forEach(clearInterval);
   showLogin();
 });
-document.querySelectorAll(".refreshBtn").forEach(b => b.onclick = () => loadVideos());
 
 function showApp() {
-  $("loginCard").classList.add("hidden");
+  $("loginWrap").classList.add("hidden");
+  $("appWrap").classList.remove("hidden");
   $("who").textContent = localStorage.getItem(EMAIL_KEY) || "";
   switchTab(currentTab);
   loadVideos();
-  // Refresh displayed email — covers OAuth logins where email isn't in localStorage
   api("/auth/me").then(u => {
     if (u && u.email) {
       localStorage.setItem(EMAIL_KEY, u.email);
@@ -433,79 +469,217 @@ function showApp() {
     }
   }).catch(() => {});
 }
+
 function showLogin() {
-  $("loginCard").classList.remove("hidden");
+  $("appWrap").classList.add("hidden");
+  $("loginWrap").classList.remove("hidden");
   document.querySelectorAll(".tab-pane").forEach(p => p.classList.add("hidden"));
   $("who").textContent = "";
-}
-
-// ── Videos ────────────────────────────────────────────────────────────
-async function loadVideos() {
-  $("cmpVidList").innerHTML = `<div class="info">${spinHTML("Loading your videos…")}</div>`;
-  $("askVidSel").innerHTML = `<option value="">Loading…</option>`;
-  try {
-    const vids = await api("/videos");
-    videosCache = vids || [];
-    renderVideos();
-  } catch (e) {
-    if (e.status === 401) { onAuthExpired(); return; }
-    const errHTML = `<div class="err">${escapeHtml(e.message)}</div>`;
-    $("cmpVidList").innerHTML = errHTML;
-    $("askVidSel").innerHTML = `<option value="">— error —</option>`;
-  }
-}
-
-function renderVideos() {
-  const ready = videosCache.filter(v => v.status === "ready");
-
-  // Compare list
-  if (!videosCache.length) {
-    $("cmpVidList").innerHTML = emptyVideosHTML();
-  } else {
-    $("cmpVidList").innerHTML = videosCache.map(v => `
-      <label class="vid-row">
-        <input type="checkbox" data-vid="${escapeAttr(v.video_id)}" ${v.status === "ready" ? "" : "disabled"} />
-        <span class="name">${escapeHtml(v.filename)}</span>
-        <span class="status ${escapeAttr(v.status)}">${escapeHtml(v.status)}</span>
-      </label>`).join("");
-  }
-
-  // Ask dropdown — only ready videos make sense
-  if (!ready.length) {
-    $("askVidSel").innerHTML = `<option value="">— no processed videos yet —</option>`;
-  } else {
-    $("askVidSel").innerHTML =
-      `<option value="">— pick a video —</option>` +
-      ready.map(v =>
-        `<option value="${escapeAttr(v.video_id)}">${escapeHtml(v.filename)}</option>`
-      ).join("");
-  }
-}
-
-function emptyVideosHTML() {
-  return `<div class="empty">
-    <div class="icon">📼</div>
-    <div class="ttl">No videos yet</div>
-    <div class="body">Upload a video with <code>POST /upload_video</code>,<br/>
-      then index it with <code>POST /process_video</code>.<br/>
-      It will show up here once ready.</div>
-  </div>`;
 }
 
 function onAuthExpired() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
+  Object.values(_pollers).forEach(clearInterval);
   showLogin();
   setMsg($("authMsg"), "Your session expired. Please sign in again.", "err");
 }
 
-// ── Ask single video ──────────────────────────────────────────────────
+// ── Upload ─────────────────────────────────────────────────────────────
+$("fileInput").onchange = async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  if (!file) return;
+
+  const MAX_MB = 300;
+  if (file.size > MAX_MB * 1024 * 1024) {
+    toast(`File too large — max ${MAX_MB} MB`); return;
+  }
+
+  // Show upload bar
+  $("uploadFileName").textContent = file.name;
+  $("uploadProgBar").style.width = "0%";
+  $("uploadBar").classList.remove("hidden");
+
+  const formData = new FormData();
+  formData.append("file", file);
+  const tok = localStorage.getItem(TOKEN_KEY);
+
+  // Use XHR so we can show upload progress
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/upload_video");
+      xhr.setRequestHeader("Authorization", "Bearer " + tok);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable)
+          $("uploadProgBar").style.width = Math.round(e.loaded / e.total * 100) + "%";
+      };
+      xhr.onload = () => {
+        try {
+          const r = JSON.parse(xhr.responseText);
+          if (xhr.status >= 400) reject(new Error(r.detail || "Upload failed"));
+          else resolve(r);
+        } catch { reject(new Error("Upload failed")); }
+      };
+      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.send(formData);
+    });
+
+    toast(`"${file.name}" uploaded — processing started`);
+    if (result.job_id) startPolling(result.job_id, result.video_id);
+    loadVideos();
+  } catch (e) {
+    toast("Upload failed: " + e.message);
+  } finally {
+    $("uploadBar").classList.add("hidden");
+  }
+};
+
+// ── Job polling ────────────────────────────────────────────────────────
+function startPolling(jobId, videoId) {
+  if (_pollers[jobId]) return;
+  _pollers[jobId] = setInterval(async () => {
+    try {
+      const s = await api(`/job_status/${jobId}`);
+      _applyProgressToItem(videoId, s);
+      if (s.status === "ready" || s.status === "failed") {
+        clearInterval(_pollers[jobId]);
+        delete _pollers[jobId];
+        if (s.status === "ready") {
+          toast("Processing complete!");
+          loadVideos();
+        } else {
+          toast("Processing failed: " + (s.error || "unknown error"));
+        }
+      }
+    } catch (e) {
+      clearInterval(_pollers[jobId]);
+      delete _pollers[jobId];
+    }
+  }, 1000);
+}
+
+function _applyProgressToItem(videoId, s) {
+  const el = document.querySelector(`#videoLibrary [data-vid="${CSS.escape(videoId)}"]`);
+  if (!el) return;
+  const badge = el.querySelector(".sv-badge");
+  if (badge) { badge.className = `sv-badge ${s.status}`; badge.textContent = s.status; }
+  const bar   = el.querySelector(".sv-prog-bar");
+  if (bar) bar.style.width = (s.progress || 0) + "%";
+  const stage = el.querySelector(".sv-stage");
+  if (stage) stage.textContent = (s.stage || s.status) + "…";
+}
+
+// ── Videos ─────────────────────────────────────────────────────────────
+async function loadVideos() {
+  $("videoLibrary").innerHTML = `<div class="sb-empty">${spinHTML("Loading…")}</div>`;
+  try {
+    const vids = await api("/videos");
+    videosCache = vids || [];
+    renderSidebar();
+    // Re-start polling for any in-progress jobs
+    for (const v of videosCache) {
+      if ((v.status === "queued" || v.status === "processing") && v.job_id) {
+        startPolling(v.job_id, v.video_id);
+      }
+    }
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    $("videoLibrary").innerHTML =
+      `<div class="err" style="margin:10px">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function renderSidebar() {
+  const lib = $("videoLibrary");
+  if (!videosCache.length) {
+    lib.innerHTML = `<div class="sb-empty">No videos yet.<br>Click <b>+ Upload</b> to add one.</div>`;
+    _updateAskDropdown([]);
+    _updateCmpBanner(0);
+    return;
+  }
+  lib.innerHTML = videosCache.map(v => _svItemHTML(v)).join("");
+  _updateAskDropdown(videosCache.filter(v => v.status === "ready"));
+  _updateCmpBanner(0);
+}
+
+function _svItemHTML(v) {
+  const inProg = v.status === "queued" || v.status === "processing";
+  const pct    = v.progress || 0;
+  const stage  = v.stage || v.status;
+  const active = v.video_id === selectedVidId;
+  return `
+  <div class="sv-item${active ? " sv-active" : ""}" data-vid="${escapeAttr(v.video_id)}">
+    <div class="sv-row" onclick="handleSvClick(event,'${escapeAttr(v.video_id)}','${escapeAttr(v.file_url||'')}')">
+      <input type="checkbox" class="sv-check" data-vid="${escapeAttr(v.video_id)}"
+             ${v.status === "ready" ? "" : "disabled"}
+             onclick="event.stopPropagation()"
+             onchange="_updateCmpBanner(document.querySelectorAll('#videoLibrary .sv-check:checked').length)">
+      <span class="sv-name">${escapeHtml(v.filename)}</span>
+      <span class="sv-badge ${escapeAttr(v.status)}">${escapeHtml(v.status)}</span>
+    </div>
+    ${inProg ? `
+    <div class="sv-prog-wrap">
+      <div class="sv-prog"><div class="sv-prog-bar" style="width:${pct}%"></div></div>
+      <div class="sv-stage">${escapeHtml(stage)}…</div>
+    </div>` : ""}
+  </div>`;
+}
+
+function handleSvClick(ev, videoId, fileUrl) {
+  if (ev.target.type === "checkbox") return;
+  selectedVidId = videoId;
+  // Highlight active item
+  document.querySelectorAll(".sv-item").forEach(el =>
+    el.classList.toggle("sv-active", el.dataset.vid === videoId));
+  // Load player if we have a URL
+  if (fileUrl) {
+    const src = fileUrl.startsWith("/")
+      ? fileUrl + "?token=" + (localStorage.getItem(TOKEN_KEY) || "")
+      : fileUrl;
+    $("videoPlayer").src = src;
+    $("playerWrap").classList.remove("hidden");
+    const v = videosCache.find(x => x.video_id === videoId);
+    $("playingName").textContent = v ? v.filename : "";
+  }
+  // Sync ask dropdown selection
+  const sel = $("askVidSel");
+  if (sel && sel.querySelector(`option[value="${CSS.escape(videoId)}"]`)) {
+    sel.value = videoId;
+  }
+}
+
+function _updateAskDropdown(readyVids) {
+  $("askVidSel").innerHTML =
+    `<option value="">— pick a video —</option>` +
+    readyVids.map(v =>
+      `<option value="${escapeAttr(v.video_id)}"${v.video_id === selectedVidId ? " selected" : ""}>${escapeHtml(v.filename)}</option>`
+    ).join("");
+}
+
+function _updateCmpBanner(n) {
+  const el = $("cmpSelBanner");
+  if (!el) return;
+  if (n === 0) {
+    el.className = "info";
+    el.textContent = "← Select 2 or more videos in the sidebar library";
+  } else if (n < 2) {
+    el.className = "info";
+    el.textContent = `${n} video selected — pick at least 1 more`;
+  } else {
+    el.className = "ok";
+    el.textContent = `${n} videos selected ✓`;
+  }
+}
+
+// ── Ask single video ───────────────────────────────────────────────────
 $("askBtn").onclick = async () => {
   const video_id = $("askVidSel").value;
-  const query = $("askQ").value.trim();
+  const query    = $("askQ").value.trim();
   setMsg($("askMsg"), "");
   if (!video_id) { setMsg($("askMsg"), "Pick a video first.", "err"); return; }
-  if (!query) { setMsg($("askMsg"), "Type a question.", "err"); return; }
+  if (!query)    { setMsg($("askMsg"), "Type a question.", "err"); return; }
   setMsg($("askMsg"), spinHTML("Asking…"), "info");
   $("askBtn").disabled = true;
   try {
@@ -524,15 +698,15 @@ $("askBtn").onclick = async () => {
 function renderAskResult(r) {
   const card = $("askResultCard");
   card.classList.remove("hidden");
-  const conf = clamp01_100(r.confidence);
+  const conf   = clamp01_100(r.confidence);
   const status = String(r.status || "UNKNOWN").toUpperCase();
-  const statusColor = status === "SUPPORTED" ? "s-COMPARABLE"
-    : status === "PARTIAL" ? "s-PARTIAL"
+  const statusColor = status === "SUPPORTED"   ? "s-COMPARABLE"
+    : status === "PARTIAL"                     ? "s-PARTIAL"
     : status === "UNSUPPORTED" || status === "REFUSED" ? "s-NOT_COMPARABLE"
     : "s-INSUFFICIENT";
   $("askMeta").innerHTML = metaHTML({
     "provider": r.provider || "—",
-    "latency": (r.latency_ms || 0) + " ms",
+    "latency":  (r.latency_ms || 0) + " ms",
     "confidence": conf,
     "cached": r.cached ? "yes" : "no",
   });
@@ -545,20 +719,19 @@ function renderAskResult(r) {
   const tsArr = r.timestamp ? [r.timestamp] : [];
   $("askTimestamps").innerHTML = tsArr.length
     ? `<label style="margin-top:0">Evidence span</label>
-       <div class="ts-row">${tsArr.map(t => tsChipHTML(t)).join("")}</div>`
-    : "";
+       <div class="ts-row">${tsArr.map(t => tsChipHTML(t)).join("")}</div>` : "";
   card.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
-// ── Compare ───────────────────────────────────────────────────────────
+// ── Compare ────────────────────────────────────────────────────────────
 $("cmpBtn").onclick = async () => {
-  const ids = [...document.querySelectorAll("#cmpVidList input:checked")]
+  const ids = [...document.querySelectorAll("#videoLibrary .sv-check:checked")]
     .map(el => el.dataset.vid);
   const question = $("cmpQ").value.trim();
   setMsg($("cmpMsg"), "");
-  if (ids.length < 2) { setMsg($("cmpMsg"), "Pick at least 2 videos.", "err"); return; }
+  if (ids.length < 2) { setMsg($("cmpMsg"), "Select at least 2 videos in the sidebar.", "err"); return; }
   if (ids.length > 8) { setMsg($("cmpMsg"), "Pick at most 8 videos.", "err"); return; }
-  if (!question) { setMsg($("cmpMsg"), "Type a question.", "err"); return; }
+  if (!question)      { setMsg($("cmpMsg"), "Type a question.", "err"); return; }
   setMsg($("cmpMsg"), spinHTML("Comparing… checking topic alignment, evidence, and confidence…"), "info");
   $("cmpBtn").disabled = true;
   try {
@@ -581,22 +754,18 @@ function renderCompareResult(r) {
   const statusClass = "s-" + status;
   const sim = r.gate && r.gate.topic_similarity != null
     ? Number(r.gate.topic_similarity).toFixed(2) : "—";
-
   $("cmpMeta").innerHTML = metaHTML({
     "provider": r.provider || "—",
-    "latency": (r.latency_ms || 0) + " ms",
-    "videos": (r.per_video || []).length,
+    "latency":  (r.latency_ms || 0) + " ms",
+    "videos":   (r.per_video || []).length,
     "topic similarity": sim,
   });
-
   $("cmpStatusBanner").innerHTML = `
     <div class="status-banner ${statusClass}">
       <span class="badge ${statusClass}">${escapeHtml(status)}</span>
       <span class="reason-text">${escapeHtml(r.reason || "")}</span>
     </div>`;
-
-  // Per-video relevance score chart (highlights differences visually)
-  const scores = r.scores || {};
+  const scores    = r.scores || {};
   const vidNameById = Object.fromEntries(
     (r.per_video || []).map(pv => [pv.video_id, pv.filename]));
   const scoreEntries = Object.entries(scores)
@@ -610,29 +779,18 @@ function renderCompareResult(r) {
         ${scoreEntries.map(([vid, s]) => `
           <div class="score-row">
             <span class="vname">${escapeHtml(vidNameById[vid] || vid)}</span>
-            <span class="vbar"><div style="width:${(s / maxS * 100).toFixed(0)}%"></div></span>
+            <span class="vbar"><div style="width:${(s/maxS*100).toFixed(0)}%"></div></span>
             <span class="vval">${s.toFixed(3)}</span>
           </div>`).join("")}
       </div>`;
-  } else {
-    $("cmpScores").innerHTML = "";
-  }
-
-  // Comparative answer (the prose). For refusals, the comparison string is
-  // the gate's reason — already shown in the banner — so we keep the prose
-  // block too because it might also include extractive details.
+  } else { $("cmpScores").innerHTML = ""; }
   $("cmpAnswer").textContent = r.comparison || r.answer || "";
-
-  // Per-video cards. The authoritative "best" pick comes from the deterministic
-  // ranking layer (r.best_video). It's only set when the gate decision is
-  // COMPARABLE or PARTIAL — so we never mislead on a refusal.
-  const pvs = r.per_video || [];
-  const ts = r.topic_strength || {};
+  const pvs   = r.per_video || [];
+  const ts    = r.topic_strength || {};
   const bestId = r.best_video || null;
-
   $("cmpPerVideo").innerHTML = pvs.map(pv => {
-    const conf = clamp01_100(pv.confidence);
-    const top = Number(pv.top_score) || 0;
+    const conf  = clamp01_100(pv.confidence);
+    const top   = Number(pv.top_score) || 0;
     const cClass = conf >= 70 ? "c-hi" : conf >= 40 ? "c-md" : "c-lo";
     const bestTag = pv.video_id === bestId
       ? `<span class="best-tag">★ Best for this topic</span>` : "";
@@ -661,10 +819,6 @@ function renderCompareResult(r) {
         </div>` : ""}
     </div>`;
   }).join("");
-
-  // Recommendation card (beginner / revision). Only render real picks when
-  // the ranker produced them; otherwise show the explanation only — it tells
-  // the user *why* recommendations were withheld.
   const rec = r.recommendation || {};
   const hasPicks = rec.beginner || rec.revision;
   if (hasPicks || rec.explanation) {
@@ -672,24 +826,14 @@ function renderCompareResult(r) {
       <label style="margin-top:18px">Recommendation</label>
       ${hasPicks ? `
         <div class="rec-card">
-          ${rec.beginner ? `
-            <div class="rec beginner">
-              <div class="lbl">Best for beginners</div>
-              <div class="body">${escapeHtml(rec.beginner)}</div>
-            </div>` : ""}
-          ${rec.revision ? `
-            <div class="rec revision">
-              <div class="lbl">Best for revision</div>
-              <div class="body">${escapeHtml(rec.revision)}</div>
-            </div>` : ""}
+          ${rec.beginner ? `<div class="rec beginner"><div class="lbl">Best for beginners</div>
+            <div class="body">${escapeHtml(rec.beginner)}</div></div>` : ""}
+          ${rec.revision ? `<div class="rec revision"><div class="lbl">Best for revision</div>
+            <div class="body">${escapeHtml(rec.revision)}</div></div>` : ""}
         </div>` : ""}
       ${rec.explanation ? `
         <div class="rec-explanation">${escapeHtml(rec.explanation)}</div>` : ""}`;
-  } else {
-    $("cmpRecommendation").innerHTML = "";
-  }
-
-  // Key differences (deterministic factual deltas).
+  } else { $("cmpRecommendation").innerHTML = ""; }
   const diffs = Array.isArray(r.differences) ? r.differences : [];
   if (diffs.length) {
     $("cmpDifferences").innerHTML = `
@@ -697,23 +841,18 @@ function renderCompareResult(r) {
       <div class="diffs"><ul>
         ${diffs.map(d => `<li>${escapeHtml(d)}</li>`).join("")}
       </ul></div>`;
-  } else {
-    $("cmpDifferences").innerHTML = "";
-  }
-
+  } else { $("cmpDifferences").innerHTML = ""; }
   card.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────
 function metaHTML(obj) {
   return Object.entries(obj).map(([k, v]) =>
-    `<span><b>${escapeHtml(String(v))}</b> ${escapeHtml(k)}</span>`
-  ).join("");
+    `<span><b>${escapeHtml(String(v))}</b> ${escapeHtml(k)}</span>`).join("");
 }
 function tsChipHTML(label) {
   return `<span class="ts" data-ts="${escapeAttr(label)}" title="Click to copy">${escapeHtml(label)}</span>`;
 }
-// Click-to-copy on any timestamp chip (event-delegated, set up once).
 document.addEventListener("click", (ev) => {
   const el = ev.target.closest(".ts");
   if (!el) return;
@@ -723,19 +862,14 @@ document.addEventListener("click", (ev) => {
             setTimeout(() => el.classList.remove("copied"), 900); },
     () => toast("Copy failed"));
 });
-
-function clamp01_100(n) {
-  const v = Math.round(Number(n) || 0);
-  return Math.max(0, Math.min(100, v));
-}
+function clamp01_100(n) { const v = Math.round(Number(n) || 0); return Math.max(0, Math.min(100, v)); }
 function escapeHtml(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[c]));
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
 function escapeAttr(s) { return escapeHtml(s); }
 
-// ── Boot ──────────────────────────────────────────────────────────────
+// ── Boot ───────────────────────────────────────────────────────────────
 (function () {
   // Pick up JWT from URL fragment after Google OAuth redirect (/ui#token=…)
   const hash = location.hash;
@@ -744,7 +878,6 @@ function escapeAttr(s) { return escapeHtml(s); }
     const tok = params.get("token");
     if (tok) {
       localStorage.setItem(TOKEN_KEY, tok);
-      // Remove fragment so the token doesn't sit in the browser history
       history.replaceState(null, "", location.pathname + location.search);
       showApp();
       return;

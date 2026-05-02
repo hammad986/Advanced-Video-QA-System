@@ -102,13 +102,28 @@ class VideoOut(BaseModel):
     error: Optional[str] = None
     created_at: float
     updated_at: float
+    job_id: Optional[str] = None
+    progress: int = 0
+    stage: Optional[str] = None
+    file_url: Optional[str] = None
 
 
 class UploadOut(BaseModel):
     video_id: str
+    job_id: str
     filename: str
-    status: str
-    next: str = "POST /process_video to index this file"
+    file_url: str
+    status: str = "queued"
+    next: str = ""
+
+
+class JobStatusOut(BaseModel):
+    job_id: str
+    video_id: str
+    status: str           # queued | processing | ready | failed
+    progress: int         # 0–100
+    stage: Optional[str] = None
+    error: Optional[str] = None
 
 
 class ProcessIn(BaseModel):

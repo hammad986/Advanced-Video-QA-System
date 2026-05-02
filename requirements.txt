@@ -18,3 +18,6 @@ langchain
 pydub
 yt-dlp
 psycopg2-binary
+boto3
+fakeredis
+rq

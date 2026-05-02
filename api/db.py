@@ -122,23 +122,14 @@ def init_db() -> None:
 
 
 def _init_pg() -> None:
+    # Step 1 — ensure base tables exist (no new columns here so it's safe against old schemas)
     with _conn() as c:
         c.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id                        TEXT PRIMARY KEY,
                 email                     TEXT UNIQUE NOT NULL,
                 password_hash             TEXT,
-                created_at                DOUBLE PRECISION NOT NULL,
-                otp_hash                  TEXT,
-                otp_expiry                DOUBLE PRECISION,
-                otp_attempts              INTEGER DEFAULT 0,
-                otp_verified              INTEGER DEFAULT 0,
-                tokens_invalidated_before DOUBLE PRECISION DEFAULT 0,
-                email_verified            INTEGER DEFAULT 1,
-                email_ver_hash            TEXT,
-                email_ver_expiry          DOUBLE PRECISION,
-                google_id                 TEXT UNIQUE,
-                auth_provider             TEXT DEFAULT 'local'
+                created_at                DOUBLE PRECISION NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS videos (
@@ -161,9 +152,33 @@ def _init_pg() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_rle_key_ts ON rate_limit_events(key, ts)
         """)
-    # Idempotent column additions for any future migrations
-    _add_column_if_missing("users", "google_id",    "TEXT UNIQUE")
-    _add_column_if_missing("users", "auth_provider", "TEXT DEFAULT 'local'")
+
+    # Step 2 — idempotent column additions (must run before any index on those columns)
+    _add_column_if_missing("users",  "otp_hash",                  "TEXT")
+    _add_column_if_missing("users",  "otp_expiry",                "DOUBLE PRECISION")
+    _add_column_if_missing("users",  "otp_attempts",              "INTEGER DEFAULT 0")
+    _add_column_if_missing("users",  "otp_verified",              "INTEGER DEFAULT 0")
+    _add_column_if_missing("users",  "tokens_invalidated_before", "DOUBLE PRECISION DEFAULT 0")
+    _add_column_if_missing("users",  "email_verified",            "INTEGER DEFAULT 1")
+    _add_column_if_missing("users",  "email_ver_hash",            "TEXT")
+    _add_column_if_missing("users",  "email_ver_expiry",          "DOUBLE PRECISION")
+    _add_column_if_missing("users",  "google_id",                 "TEXT")
+    _add_column_if_missing("users",  "auth_provider",             "TEXT DEFAULT 'local'")
+    _add_column_if_missing("videos", "job_id",                    "TEXT")
+    _add_column_if_missing("videos", "progress",                  "INTEGER DEFAULT 0")
+    _add_column_if_missing("videos", "stage",                     "TEXT DEFAULT 'queued'")
+    _add_column_if_missing("videos", "file_url",                  "TEXT")
+
+    # Step 3 — idempotent indexes (columns guaranteed to exist now)
+    with _conn() as c:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id "
+            "ON users(google_id) WHERE google_id IS NOT NULL"
+        )
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_job_id "
+            "ON videos(job_id) WHERE job_id IS NOT NULL"
+        )
 
 
 def _init_sqlite() -> None:
@@ -184,10 +199,15 @@ def _init_sqlite() -> None:
                 error      TEXT,
                 created_at REAL NOT NULL,
                 updated_at REAL NOT NULL,
+                job_id     TEXT UNIQUE,
+                progress   INTEGER DEFAULT 0,
+                stage      TEXT DEFAULT 'queued',
+                file_url   TEXT,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_videos_user ON videos(user_id);
+            CREATE INDEX IF NOT EXISTS idx_videos_user   ON videos(user_id);
+            CREATE INDEX IF NOT EXISTS idx_videos_job_id ON videos(job_id);
 
             CREATE TABLE IF NOT EXISTS rate_limit_events (
                 id  INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,19 +228,33 @@ def _init_sqlite() -> None:
         ("email_ver_expiry",          "REAL"),
         ("google_id",                 "TEXT"),
         ("auth_provider",             "TEXT DEFAULT 'local'"),
+        ("job_id",                    "TEXT"),
+        ("progress",                  "INTEGER DEFAULT 0"),
+        ("stage",                     "TEXT DEFAULT 'queued'"),
+        ("file_url",                  "TEXT"),
     ]:
-        _add_column_if_missing("users", col, col_def)
-    # Unique index for google_id on SQLite (ALTER TABLE can't add UNIQUE)
+        _add_column_if_missing("users" if col in (
+            "otp_hash", "otp_expiry", "otp_attempts", "otp_verified",
+            "tokens_invalidated_before", "email_verified", "email_ver_hash",
+            "email_ver_expiry", "google_id", "auth_provider",
+        ) else "videos", col, col_def)
+    # Unique indexes for SQLite (ALTER TABLE can't add UNIQUE)
     with _conn() as c:
         c.execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id "
             "ON users(google_id) WHERE google_id IS NOT NULL"
+        )
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_videos_job_id_uq "
+            "ON videos(job_id) WHERE job_id IS NOT NULL"
         )
 
 
 def _add_column_if_missing(table: str, column: str, col_def: str) -> None:
     if _USE_PG:
         pg_def = col_def.replace("REAL", "DOUBLE PRECISION")
+        # Strip UNIQUE from col_def — handled via separate CREATE UNIQUE INDEX
+        pg_def = pg_def.replace(" UNIQUE", "")
         with _conn() as c:
             c.execute(
                 f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {pg_def}"
@@ -232,7 +266,8 @@ def _add_column_if_missing(table: str, column: str, col_def: str) -> None:
                 for row in c.execute(f"PRAGMA table_info({table})").fetchall()
             }
             if column not in existing:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+                safe_def = col_def.replace(" UNIQUE", "")
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {safe_def}")
 
 
 # ── Users ──────────────────────────────────────────────────────────────
@@ -245,7 +280,6 @@ def create_user(
 ) -> Dict[str, Any]:
     user_id = uuid.uuid4().hex
     now = time.time()
-    # email_verified=1 for OAuth (Google verified it), 0 for local
     email_verified = 1 if auth_provider != "local" else 0
     with _conn() as c:
         c.execute(
@@ -299,7 +333,6 @@ def get_user_by_google_id(google_id: str) -> Optional[Dict[str, Any]]:
 
 
 def link_google_account(user_id: str, google_id: str) -> None:
-    """Attach a Google ID to an existing local account and mark it verified."""
     with _conn() as c:
         c.execute(
             "UPDATE users SET google_id = ?, email_verified = 1 WHERE id = ?",
@@ -369,7 +402,6 @@ def increment_otp_attempts(user_id: str) -> int:
 
 
 def mark_otp_verified(user_id: str) -> None:
-    """Mark OTP verified AND consume the hash so it cannot be reused."""
     with _conn() as c:
         c.execute(
             "UPDATE users SET otp_verified = 1, otp_hash = NULL WHERE id = ?",
@@ -425,15 +457,22 @@ def _prune_old_rate_events() -> None:
 # ── Videos ─────────────────────────────────────────────────────────────
 
 def register_video(
-    video_id: str, user_id: str, filename: str, status: str = "uploaded"
+    video_id: str,
+    user_id: str,
+    filename: str,
+    status: str = "uploaded",
+    job_id: Optional[str] = None,
+    file_url: Optional[str] = None,
 ) -> None:
     now = time.time()
     with _conn() as c:
         c.execute(
             """INSERT INTO videos
-               (video_id, user_id, filename, status, error, created_at, updated_at)
-               VALUES (?, ?, ?, ?, NULL, ?, ?)""",
-            (video_id, user_id, filename, status, now, now),
+               (video_id, user_id, filename, status, error,
+                created_at, updated_at, job_id, progress, stage, file_url)
+               VALUES (?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, ?)""",
+            (video_id, user_id, filename, status,
+             now, now, job_id, status, file_url),
         )
 
 
@@ -447,12 +486,41 @@ def update_video_status(
         )
 
 
+def update_job_progress(
+    job_id: str,
+    progress: int,
+    stage: str,
+    status: str,
+    error: Optional[str] = None,
+) -> None:
+    """Update processing progress for the video associated with job_id."""
+    with _conn() as c:
+        c.execute(
+            """UPDATE videos
+               SET progress = ?, stage = ?, status = ?, error = ?, updated_at = ?
+               WHERE job_id = ?""",
+            (progress, stage, status, error, time.time(), job_id),
+        )
+
+
 def get_video(video_id: str) -> Optional[Dict[str, Any]]:
     with _conn() as c:
         row = c.execute(
-            """SELECT video_id, user_id, filename, status, error, created_at, updated_at
+            """SELECT video_id, user_id, filename, status, error,
+                      created_at, updated_at, job_id, progress, stage, file_url
                FROM videos WHERE video_id = ?""",
             (video_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def get_video_by_job_id(job_id: str) -> Optional[Dict[str, Any]]:
+    with _conn() as c:
+        row = c.execute(
+            """SELECT video_id, user_id, filename, status, error,
+                      created_at, updated_at, job_id, progress, stage, file_url
+               FROM videos WHERE job_id = ?""",
+            (job_id,),
         ).fetchone()
     return dict(row) if row else None
 
@@ -460,7 +528,8 @@ def get_video(video_id: str) -> Optional[Dict[str, Any]]:
 def list_user_videos(user_id: str) -> List[Dict[str, Any]]:
     with _conn() as c:
         rows = c.execute(
-            """SELECT video_id, filename, status, error, created_at, updated_at
+            """SELECT video_id, filename, status, error,
+                      created_at, updated_at, job_id, progress, stage, file_url
                FROM videos WHERE user_id = ? ORDER BY created_at DESC""",
             (user_id,),
         ).fetchall()
