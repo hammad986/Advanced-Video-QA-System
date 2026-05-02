@@ -1,0 +1,80 @@
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      S3_SIGNED_URL_EXPIRY: ${S3_SIGNED_URL_EXPIRY:-3600}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      VIDEO_QA_MAX_UPLOAD_MB: ${VIDEO_QA_MAX_UPLOAD_MB:-300}
+    volumes:
+      - app_data:/app/data
+      - app_models:/app/models
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      WORKER_MODE: rq
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DATABASE_URL}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      JOB_TIMEOUT_SECONDS: ${JOB_TIMEOUT_SECONDS:-3600}
+      JOB_MAX_RETRIES: ${JOB_MAX_RETRIES:-3}
+      FFMPEG_TIMEOUT: ${FFMPEG_TIMEOUT:-600}
+    volumes:
+      - app_data:/app/data
+      - app_models:/app/models
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2      # scale workers independently of the API
+
+volumes:
+  redis_data:
+  app_data:
+  app_models:

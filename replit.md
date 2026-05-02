@@ -11,7 +11,8 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 - **UI**: Static HTML/JS at `api/static/index.html` served at `/ui`
 - **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing + OTP password reset + Google OAuth
 - **App DB**: PostgreSQL (primary, `DATABASE_URL` env var) with SQLite fallback at `data/saas.db`
-- **Background Jobs**: Python `threading.Queue` in-process worker (default); RQ + real Redis if `REDIS_URL` set
+- **Background Jobs**: Python `threading.Queue` in-process worker with retry (default); RQ + external `rq worker` process if `REDIS_URL` set (retry via `rq.Retry`, `job_timeout=3600s`, 2 worker replicas in Docker)
+- **Real-time Progress**: SSE endpoint `GET /job_stream/{job_id}` (500 ms poll, 5 min timeout, auth via `?token=`)
 - **Storage**: Local filesystem at `data/media/` (default); S3 if `USE_S3=true` + AWS creds set
 - **Embeddings**: `BAAI/bge-small-en` (via sentence-transformers)
 - **Vector Store**: FAISS (CPU)
@@ -46,7 +47,9 @@ api/
     index.html        # Static frontend (served at /ui) — sidebar + player + progress polling
 
 workers/
-  video_worker.py     # 6-stage background job: queued→validating→normalizing→transcribing→indexing→ready
+  video_worker.py          # 6-stage job: queued→validating→normalizing→transcribing→indexing→ready
+  model_cache.py           # Process-level pipeline singleton + preload() for RQ worker processes
+  rq_worker_entrypoint.py  # Separate-process RQ worker entry with model preload
 
 video_qa/           # Core RAG pipeline package
   pipeline.py       # 9-stage RAG pipeline orchestrator
@@ -101,6 +104,7 @@ requirements.txt    # Python dependencies
 |--------|------|-------------|
 | POST | /upload_video | Upload a video/audio file (auth, max 300 MB). Returns immediately with `job_id` + `file_url`. |
 | GET  | /job_status/{job_id} | Poll background job progress: `{status, progress, stage, file_url, error}` (auth) |
+| GET  | /job_stream/{job_id} | SSE real-time progress stream — auth via `?token=<jwt>` query param (EventSource-compatible) |
 | GET  | /media/{path} | Serve stored media file — requires `?token=<jwt>` query param (auth via query param) |
 | POST | /process_video | Transcribe + index an uploaded video (legacy, synchronous, auth) |
 | POST | /process_url | Download + index a YouTube URL (auth, rate-limited, max 200 MB / 30 min) |

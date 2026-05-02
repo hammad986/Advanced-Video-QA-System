@@ -34,6 +34,7 @@ System
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import re
@@ -43,7 +44,7 @@ import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from urllib.parse import urlparse
 
 _ROOT = Path(__file__).resolve().parent.parent
@@ -60,13 +61,13 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
 from . import auth, db, storage
 from .compare import router as compare_router
-from .jobs import enqueue_video_job, start_worker
+from .jobs import enqueue_video_job, queue_mode, start_worker
 from .pipeline_singleton import get_pipeline, index_write_lock
 from .schemas import (
     AskIn,
@@ -200,9 +201,12 @@ def _startup() -> None:
     else:
         logger.warning("[boot] Google OAuth NOT configured")
 
-    # Start RQ background worker (in-process, daemon thread)
-    start_worker()
-    logger.info("[boot] RQ worker thread started")
+    # Start background worker (threading mode only — Redis mode uses external process)
+    worker = start_worker()
+    if worker:
+        logger.info("[boot] threading.Queue worker started (no REDIS_URL)")
+    else:
+        logger.info("[boot] RQ/Redis mode — external worker required (REDIS_URL set)")
 
 
 app.include_router(compare_router)
@@ -620,6 +624,89 @@ def job_status(
     )
 
 
+@app.get("/job_stream/{job_id}", tags=["videos"])
+async def job_stream(
+    job_id: str,
+    request: Request,
+    token: str = "",
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+) -> StreamingResponse:
+    """Server-Sent Events stream for real-time job progress.
+
+    Connect with:
+        const es = new EventSource(`/job_stream/${jobId}?token=${bearerToken}`);
+        es.onmessage = e => console.log(JSON.parse(e.data));
+
+    The stream closes automatically when status reaches 'ready' or 'failed',
+    or after 5 minutes (safety timeout).  Each event is a JSON object:
+        {"job_id": "…", "video_id": "…", "status": "…",
+         "progress": 0-100, "stage": "…", "error": null}
+    """
+    raw_token = token or (creds.credentials if creds and creds.credentials else "")
+    user = auth.user_from_token(raw_token) if raw_token else None
+    if not user:
+        async def _deny() -> AsyncGenerator[str, None]:
+            yield f"data: {json.dumps({'error': 'Unauthorized'})}\n\n"
+        return StreamingResponse(
+            _deny(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            status_code=401,
+        )
+
+    _SSE_TIMEOUT  = 300.0   # seconds
+    _SSE_INTERVAL = 0.5     # poll interval
+
+    async def _events() -> AsyncGenerator[str, None]:
+        last_snapshot: Optional[str] = None
+        deadline = asyncio.get_event_loop().time() + _SSE_TIMEOUT
+
+        # Send a comment heartbeat immediately so the client knows the stream opened
+        yield ": connected\n\n"
+
+        while True:
+            if asyncio.get_event_loop().time() > deadline:
+                yield f"data: {json.dumps({'error': 'stream timeout'})}\n\n"
+                break
+
+            # Disconnect if client has gone away
+            if await request.is_disconnected():
+                break
+
+            video = await asyncio.to_thread(db.get_video_by_job_id, job_id)
+            if not video or video["user_id"] != user["id"]:
+                yield f"data: {json.dumps({'error': 'job not found'})}\n\n"
+                break
+
+            payload = json.dumps({
+                "job_id":   job_id,
+                "video_id": video["video_id"],
+                "status":   video["status"],
+                "progress": int(video.get("progress") or 0),
+                "stage":    video.get("stage") or video["status"],
+                "error":    video.get("error"),
+            })
+
+            if payload != last_snapshot:
+                yield f"data: {payload}\n\n"
+                last_snapshot = payload
+
+            if video["status"] in ("ready", "failed"):
+                break
+
+            await asyncio.sleep(_SSE_INTERVAL)
+
+    return StreamingResponse(
+        _events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":    "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection":       "keep-alive",
+        },
+    )
+
+
 @app.get("/media/{path:path}", tags=["media"])
 def serve_media(path: str, token: str = "") -> FileResponse:
     """Serve locally-stored video files.
@@ -885,11 +972,12 @@ def ask_question(
 @app.get("/", tags=["system"])
 def root() -> Dict[str, Any]:
     return {
-        "service": "Video-QA SaaS API",
-        "version": app.version,
-        "docs": "/docs",
-        "health": "/health",
-        "ui": "/ui",
-        "google_oauth": auth.google_oauth_configured(),
-        "storage_backend": "s3" if storage.USE_S3 else "local",
+        "service":         "Video-QA SaaS API",
+        "version":         app.version,
+        "docs":            "/docs",
+        "health":          "/health",
+        "ui":              "/ui",
+        "google_oauth":    auth.google_oauth_configured(),
+        "storage_backend": storage.backend_name(),
+        "queue_mode":      queue_mode(),
     }
