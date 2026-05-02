@@ -70,12 +70,17 @@ def init_db() -> None:
             """
         )
 
-    # Safe ALTER TABLE migrations — add columns only if missing
+    # Safe ALTER TABLE migrations — add columns only if missing.
+    # email_verified defaults to 1 so all pre-existing accounts are treated as verified.
+    # New registrations explicitly INSERT email_verified=0 and go through the flow.
     _add_column_if_missing("users", "otp_hash",                  "TEXT")
     _add_column_if_missing("users", "otp_expiry",                "REAL")
     _add_column_if_missing("users", "otp_attempts",              "INTEGER DEFAULT 0")
     _add_column_if_missing("users", "otp_verified",              "INTEGER DEFAULT 0")
     _add_column_if_missing("users", "tokens_invalidated_before", "REAL DEFAULT 0")
+    _add_column_if_missing("users", "email_verified",            "INTEGER DEFAULT 1")
+    _add_column_if_missing("users", "email_ver_hash",            "TEXT")
+    _add_column_if_missing("users", "email_ver_expiry",          "REAL")
 
 
 def _add_column_if_missing(table: str, column: str, col_def: str) -> None:
@@ -96,10 +101,12 @@ def create_user(email: str, password_hash: str) -> Dict[str, Any]:
     now = time.time()
     with _conn() as c:
         c.execute(
-            "INSERT INTO users (id, email, password_hash, created_at) VALUES (?, ?, ?, ?)",
+            """INSERT INTO users
+               (id, email, password_hash, created_at, email_verified)
+               VALUES (?, ?, ?, ?, 0)""",
             (user_id, email.lower(), password_hash, now),
         )
-    return {"id": user_id, "email": email.lower(), "created_at": now}
+    return {"id": user_id, "email": email.lower(), "created_at": now, "email_verified": 0}
 
 
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
@@ -107,7 +114,8 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
         row = c.execute(
             """SELECT id, email, password_hash, created_at,
                       otp_hash, otp_expiry, otp_attempts, otp_verified,
-                      tokens_invalidated_before
+                      tokens_invalidated_before,
+                      email_verified, email_ver_hash, email_ver_expiry
                FROM users WHERE email = ?""",
             (email.lower(),),
         ).fetchone()
@@ -117,7 +125,7 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
 def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     with _conn() as c:
         row = c.execute(
-            """SELECT id, email, created_at, tokens_invalidated_before
+            """SELECT id, email, created_at, tokens_invalidated_before, email_verified
                FROM users WHERE id = ?""",
             (user_id,),
         ).fetchone()
@@ -129,6 +137,26 @@ def update_password(user_id: str, password_hash: str) -> None:
         c.execute(
             "UPDATE users SET password_hash = ? WHERE id = ?",
             (password_hash, user_id),
+        )
+
+
+# ── Email Verification ─────────────────────────────────────────────────
+
+def set_email_verification(user_id: str, ver_hash: str, expiry: float) -> None:
+    with _conn() as c:
+        c.execute(
+            "UPDATE users SET email_ver_hash = ?, email_ver_expiry = ? WHERE id = ?",
+            (ver_hash, expiry, user_id),
+        )
+
+
+def mark_email_verified(user_id: str) -> None:
+    with _conn() as c:
+        c.execute(
+            """UPDATE users
+               SET email_verified = 1, email_ver_hash = NULL, email_ver_expiry = NULL
+               WHERE id = ?""",
+            (user_id,),
         )
 
 
@@ -165,9 +193,10 @@ def increment_otp_attempts(user_id: str) -> int:
 
 
 def mark_otp_verified(user_id: str) -> None:
+    """Mark the OTP as verified AND consume the hash so it cannot be reused."""
     with _conn() as c:
         c.execute(
-            "UPDATE users SET otp_verified = 1 WHERE id = ?",
+            "UPDATE users SET otp_verified = 1, otp_hash = NULL WHERE id = ?",
             (user_id,),
         )
 

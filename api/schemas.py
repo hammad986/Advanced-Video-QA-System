@@ -29,6 +29,7 @@ class UserOut(BaseModel):
     id: str
     email: str
     created_at: float
+    email_verified: bool
 
 
 # ── OTP / Password Reset ───────────────────────────────────────────────
@@ -53,11 +54,30 @@ class VerifyOTPOut(BaseModel):
 
 class ResetPasswordIn(BaseModel):
     email: EmailStr
-    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
     new_password: str = Field(min_length=8, max_length=128)
 
 
 class ResetPasswordOut(BaseModel):
+    message: str
+
+
+# ── Email Verification ─────────────────────────────────────────────────
+
+class VerifyEmailIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class VerifyEmailOut(BaseModel):
+    message: str
+    verified: bool
+
+
+class ResendVerificationIn(BaseModel):
+    email: EmailStr
+
+
+class ResendVerificationOut(BaseModel):
     message: str
 
 

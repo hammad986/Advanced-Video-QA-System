@@ -5,9 +5,11 @@ Endpoints
   POST /auth/register           create account (password policy enforced)
   POST /auth/login              obtain bearer token (rate-limited)
   GET  /auth/me                 current user (auth required)
+  POST /auth/verify_email       verify email address with 6-digit code
+  POST /auth/resend_verification resend email verification code (rate-limited)
   POST /auth/request_reset      request OTP for password reset (rate-limited)
-  POST /auth/verify_otp         verify OTP (max 5 attempts)
-  POST /auth/reset_password     reset password after OTP verification
+  POST /auth/verify_otp         verify OTP — consumes the code (max 5 attempts)
+  POST /auth/reset_password     reset password after OTP verification (no OTP re-entry)
   POST /upload_video            multipart upload (auth required)
   POST /process_video           transcribe + index an uploaded video (auth)
   POST /process_url             download + index a YouTube video (auth, rate-limited)
@@ -72,11 +74,15 @@ from .schemas import (
     RegisterIn,
     RequestResetIn,
     RequestResetOut,
+    ResendVerificationIn,
+    ResendVerificationOut,
     ResetPasswordIn,
     ResetPasswordOut,
     TokenOut,
     UploadOut,
     UserOut,
+    VerifyEmailIn,
+    VerifyEmailOut,
     VerifyOTPIn,
     VerifyOTPOut,
     VideoOut,
@@ -96,14 +102,19 @@ USER_UPLOAD_ROOT = Path("data/users")
 _ALLOWED_URL_DOMAINS = {"youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com"}
 
 # Rate limit windows
-_RATE_LOGIN_MAX    = 10   # per IP per 15 min
-_RATE_LOGIN_WIN    = 900
-_RATE_REGISTER_MAX = 5    # per IP per hour
-_RATE_REGISTER_WIN = 3600
-_RATE_OTP_MAX      = 3    # per user per hour
-_RATE_OTP_WIN      = 3600
-_RATE_URL_MAX      = 3    # per user per hour
-_RATE_URL_WIN      = 3600
+_RATE_LOGIN_MAX        = 10   # per IP per 15 min
+_RATE_LOGIN_WIN        = 900
+_RATE_REGISTER_MAX     = 5    # per IP per hour
+_RATE_REGISTER_WIN     = 3600
+_RATE_OTP_MAX          = 3    # per user per hour
+_RATE_OTP_WIN          = 3600
+_RATE_URL_MAX          = 3    # per user per hour
+_RATE_URL_WIN          = 3600
+_RATE_EMAIL_VER_MAX    = 5    # resend verification per IP per hour
+_RATE_EMAIL_VER_WIN    = 3600
+
+# Email verification code TTL
+_EMAIL_VER_TTL = 60 * 60 * 24  # 24 hours
 
 # ── App ────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -222,7 +233,22 @@ def register(payload: RegisterIn, request: Request) -> TokenOut:
 
     if db.get_user_by_email(payload.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+
     user = db.create_user(payload.email, auth.hash_password(payload.password))
+
+    # Generate a 6-digit email verification code and store it
+    ver_code = auth.generate_otp()
+    ver_hash = auth.hash_otp(ver_code)
+    ver_expiry = time.time() + _EMAIL_VER_TTL
+    db.set_email_verification(user["id"], ver_hash, ver_expiry)
+
+    # In production wire this to an email service; for now log it server-side.
+    logger.info(
+        "[email_verify] Verification code generated for user=%s email=%s (dev mode — not emailed)",
+        user["id"], payload.email,
+    )
+    logger.info("[email_verify] CODE=%s  ← use POST /auth/verify_email to confirm", ver_code)
+
     tok = auth.issue_token(user["id"])
     return TokenOut(**tok)
 
@@ -235,13 +261,87 @@ def login(payload: LoginIn, request: Request) -> TokenOut:
     user = db.get_user_by_email(payload.email)
     if not user or not auth.verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
+
+    if not user.get("email_verified"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Email address not verified. "
+            "Check your server logs for the verification code and POST to /auth/verify_email.",
+        )
+
     tok = auth.issue_token(user["id"])
     return TokenOut(**tok)
 
 
 @app.get("/auth/me", response_model=UserOut, tags=["auth"])
 def me(user: Dict[str, Any] = Depends(current_user)) -> UserOut:
-    return UserOut(id=user["id"], email=user["email"], created_at=user["created_at"])
+    return UserOut(
+        id=user["id"],
+        email=user["email"],
+        created_at=user["created_at"],
+        email_verified=bool(user.get("email_verified", True)),
+    )
+
+
+# ── Email Verification ─────────────────────────────────────────────────
+@app.post("/auth/verify_email", response_model=VerifyEmailOut, tags=["auth"])
+def verify_email(payload: VerifyEmailIn) -> VerifyEmailOut:
+    user = db.get_user_by_email(payload.email)
+    if not user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid email or code.")
+
+    if user.get("email_verified"):
+        return VerifyEmailOut(message="Email is already verified.", verified=True)
+
+    ver_hash = user.get("email_ver_hash")
+    ver_expiry = user.get("email_ver_expiry") or 0
+
+    if not ver_hash:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "No verification code found. Request a new one via /auth/resend_verification.",
+        )
+    if time.time() > ver_expiry:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Verification code has expired. Request a new one via /auth/resend_verification.",
+        )
+    if not auth.verify_otp_hash(payload.code, ver_hash):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid email or code.")
+
+    db.mark_email_verified(user["id"])
+    logger.info("[email_verify] Email verified for user=%s", user["id"])
+    return VerifyEmailOut(message="Email verified. You can now sign in.", verified=True)
+
+
+@app.post("/auth/resend_verification", response_model=ResendVerificationOut, tags=["auth"])
+def resend_verification(payload: ResendVerificationIn, request: Request) -> ResendVerificationOut:
+    ip = _client_ip(request)
+    _enforce_rate_limit(
+        f"email_ver:{ip}", _RATE_EMAIL_VER_MAX, _RATE_EMAIL_VER_WIN, "verification resend"
+    )
+
+    _GENERIC = "If the account exists and is unverified, a new code has been sent."
+
+    user = db.get_user_by_email(payload.email)
+    if not user:
+        return ResendVerificationOut(message=_GENERIC)
+
+    if user.get("email_verified"):
+        return ResendVerificationOut(message="Email is already verified.")
+
+    ver_code = auth.generate_otp()
+    ver_hash = auth.hash_otp(ver_code)
+    ver_expiry = time.time() + _EMAIL_VER_TTL
+    db.set_email_verification(user["id"], ver_hash, ver_expiry)
+
+    logger.info(
+        "[email_verify] Resent verification code for user=%s (dev mode — not emailed)",
+        user["id"],
+    )
+    logger.info("[email_verify] CODE=%s  ← use POST /auth/verify_email to confirm", ver_code)
+
+    return ResendVerificationOut(message=_GENERIC)
 
 
 # ── OTP / Password Reset ────────────────────────────────────────────────
@@ -267,7 +367,7 @@ def request_reset(payload: RequestResetIn, request: Request) -> RequestResetOut:
 
     # In production wire this to an email service; for now log it server-side.
     logger.info("[otp] Generated OTP for user=%s (dev mode — not emailed)", user["id"])
-    logger.debug("[otp] OTP value=%s (never log in production)", otp)
+    logger.info("[otp] OTP=%s  ← use POST /auth/verify_otp to verify", otp)
 
     return RequestResetOut(message=_GENERIC)
 
@@ -307,6 +407,7 @@ def verify_otp(payload: VerifyOTPIn) -> VerifyOTPOut:
             f"Incorrect OTP. {remaining} attempt(s) remaining.",
         )
 
+    # Consume the OTP hash so it cannot be reused
     db.mark_otp_verified(user["id"])
     return VerifyOTPOut(message="OTP verified. You may now reset your password.", verified=True)
 
@@ -324,19 +425,13 @@ def reset_password(payload: ResetPasswordIn) -> ResetPasswordOut:
             "OTP not verified. Complete /auth/verify_otp first.",
         )
 
-    # Re-check OTP hasn't expired since verification
+    # Check the OTP session hasn't expired since verification
     expiry = otp_data.get("otp_expiry") or 0
     if time.time() > expiry:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "OTP session expired. Start over.")
 
-    # Re-verify OTP value on the reset call for defence-in-depth
-    attempts = otp_data.get("otp_attempts") or 0
-    if attempts >= auth.OTP_MAX_ATTEMPTS:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "OTP blocked. Request a new one.")
-
-    if not auth.verify_otp_hash(payload.otp, otp_data["otp_hash"]):
-        db.increment_otp_attempts(user["id"])
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid OTP.")
+    # Note: no OTP re-verification here. The hash was consumed by /auth/verify_otp
+    # to prevent reuse. Checking otp_verified=1 + expiry is the authoritative gate.
 
     ok, err = auth.validate_password_strength(payload.new_password)
     if not ok:

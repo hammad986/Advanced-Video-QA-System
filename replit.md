@@ -76,12 +76,14 @@ requirements.txt    # Python dependencies
 ### Auth
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | /auth/register | Create account (password policy enforced, rate-limited) |
-| POST | /auth/login | Get JWT bearer token (rate-limited) |
-| GET | /auth/me | Current user info (auth required) |
+| POST | /auth/register | Create account (password policy enforced, rate-limited). Generates email verification code logged server-side. |
+| POST | /auth/login | Get JWT bearer token. Blocked with HTTP 403 if email not verified. |
+| GET | /auth/me | Current user info including `email_verified` (auth required) |
+| POST | /auth/verify_email | Verify email address with 6-digit code (24h TTL) |
+| POST | /auth/resend_verification | Resend email verification code (rate-limited 5/hr per IP) |
 | POST | /auth/request_reset | Request OTP for password reset (rate-limited) |
-| POST | /auth/verify_otp | Verify 6-digit OTP (max 5 attempts) |
-| POST | /auth/reset_password | Reset password after OTP verification |
+| POST | /auth/verify_otp | Verify 6-digit OTP — consumes the hash (max 5 attempts, then locked) |
+| POST | /auth/reset_password | Reset password after OTP verification. Only requires email + new_password (OTP already consumed by verify_otp). |
 
 ### Videos
 | Method | Path | Description |
@@ -114,10 +116,17 @@ All passwords (register + reset) must contain:
 - At least one digit
 - At least one special character
 
+### Email Verification Flow
+1. `POST /auth/register` → generates 6-digit code, SHA-256 hashed, 24h TTL, logged server-side
+2. `POST /auth/verify_email` → verifies code, clears hash, sets `email_verified=1`
+3. `POST /auth/login` → HTTP 403 if `email_verified=0`
+4. `POST /auth/resend_verification` → generates fresh code (rate-limited 5/hr per IP)
+- Existing users (pre-migration) default to `email_verified=1` — they are not affected.
+
 ### OTP Reset Flow
 1. `POST /auth/request_reset` → generates 6-digit OTP, SHA-256 hashed, 10-min expiry
-2. `POST /auth/verify_otp` → verifies OTP, max 5 attempts before lockout
-3. `POST /auth/reset_password` → requires verified OTP; invalidates all existing sessions
+2. `POST /auth/verify_otp` → verifies OTP, **consumes the hash** (sets `otp_hash=NULL`, `otp_verified=1`), max 5 attempts before lockout
+3. `POST /auth/reset_password` → checks `otp_verified=1` + expiry only (no OTP re-entry needed); invalidates all existing sessions
 
 ### Rate Limiting (sliding window, per-IP or per-user)
 - Login: 10 requests / 15 min per IP
