@@ -1,0 +1,204 @@
+You are a Senior Principal Backend Engineer.
+
+Implement two production-grade features carefully WITHOUT breaking existing functionality.
+
+⚠️ RULES:
+
+* Do NOT refactor unrelated code
+* Do NOT modify RAG pipeline
+* All changes must be additive and backward-compatible
+* Preserve existing APIs
+
+---
+
+# 🔥 FEATURE 1: SECURE URL VIDEO PROCESSING
+
+## OBJECTIVE
+
+Allow users to process videos via URL.
+
+---
+
+## SECURITY (STRICT)
+
+* Allow ONLY:
+
+  * youtube.com
+  * youtu.be
+
+* Reject all others → HTTP 400
+
+* Enforce:
+
+  * max duration: 30 minutes
+  * max file size: 200MB
+
+* Rate limit:
+
+  * 3 URL requests per user/hour
+
+---
+
+## IMPLEMENTATION
+
+### Endpoint:
+
+POST /process_url
+
+Input:
+{ "url": "..." }
+
+---
+
+### Download:
+
+* Use yt-dlp
+* Extract audio-only (bestaudio)
+
+⚠️ CRITICAL:
+
+* Run yt-dlp in background thread:
+  asyncio.to_thread(...)
+
+* NEVER block FastAPI main thread
+
+---
+
+### Flow:
+
+1. Validate URL
+2. Download audio (temp file)
+3. Pass file to existing process_video()
+4. Delete temp file after processing
+
+---
+
+### REQUIREMENTS:
+
+* Ensure ffmpeg installed
+* Add error handling for:
+
+  * invalid URL
+  * download failure
+  * timeout
+
+---
+
+# 🔐 FEATURE 2: AUTH HARDENING + OTP RESET
+
+---
+
+## 1. PASSWORD POLICY
+
+Enforce:
+
+* min 8 chars
+* uppercase
+* lowercase
+* number
+* special char
+
+Apply to:
+
+* register
+* reset
+
+---
+
+## 2. OTP RESET FLOW
+
+### Endpoint 1:
+
+POST /auth/request_reset
+
+* generate 6-digit OTP
+* expiry: 10 minutes
+* hash OTP before storing
+
+DB fields (add safely):
+
+* otp_hash
+* otp_expiry
+* otp_attempts
+
+⚠️ Migration:
+
+* use ALTER TABLE safely
+* do NOT drop data
+
+---
+
+### Endpoint 2:
+
+POST /auth/verify_otp
+
+* max 5 attempts
+* block if exceeded
+* mark session as verified
+
+---
+
+### Endpoint 3:
+
+POST /auth/reset_password
+
+* allow ONLY if OTP verified
+* update password
+* invalidate all existing JWT sessions
+
+---
+
+## 3. RATE LIMITING
+
+Apply to:
+
+* login
+* register
+* OTP request
+
+Use sliding window per IP/user
+
+---
+
+## 4. EMAIL SECURITY
+
+* Always return generic response:
+  "If the account exists, OTP has been sent"
+
+---
+
+# 🧪 TESTING (MANDATORY)
+
+Test:
+
+### URL
+
+* invalid domain → reject
+* valid youtube → process
+* large video → reject
+
+### OTP
+
+* correct OTP → success
+* wrong OTP → fail
+* 5 attempts → block
+
+### Auth
+
+* weak password → reject
+* valid password → accept
+
+---
+
+# 📦 OUTPUT
+
+Return:
+
+* files modified
+* async handling explanation
+* DB migration details
+* full test results
+
+---
+
+BEGIN.

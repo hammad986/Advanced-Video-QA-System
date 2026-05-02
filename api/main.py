@@ -2,15 +2,19 @@
 
 Endpoints
 ---------
-  POST /auth/register         create account
-  POST /auth/login            obtain bearer token
-  GET  /auth/me               current user (auth required)
-  POST /upload_video          multipart upload (auth required)
-  POST /process_video         transcribe + index an uploaded video (auth)
-  POST /ask_question          ask a question (auth)
-  GET  /videos                list current user's videos (auth)
-  GET  /health                public health probe
-  GET  /docs                  Swagger UI
+  POST /auth/register           create account (password policy enforced)
+  POST /auth/login              obtain bearer token (rate-limited)
+  GET  /auth/me                 current user (auth required)
+  POST /auth/request_reset      request OTP for password reset (rate-limited)
+  POST /auth/verify_otp         verify OTP (max 5 attempts)
+  POST /auth/reset_password     reset password after OTP verification
+  POST /upload_video            multipart upload (auth required)
+  POST /process_video           transcribe + index an uploaded video (auth)
+  POST /process_url             download + index a YouTube video (auth, rate-limited)
+  POST /ask_question            ask a question (auth)
+  GET  /videos                  list current user's videos (auth)
+  GET  /health                  public health probe
+  GET  /docs                    Swagger UI
 
 Per-user data isolation
 -----------------------
@@ -18,30 +22,24 @@ Each upload gets a namespaced video_id of the form `{user_id}__{slug}`. The
 existing pipeline already filters retrieval by `video_id`. For unscoped
 questions we filter retrieval by **all** of the caller's video_ids (server-side)
 so a user can never see another user's chunks.
-
-Persistent embeddings
----------------------
-The FAISS index at `models/video_index.faiss` is shared across users but every
-chunk's metadata records its `video_id` (which embeds the user's id). All
-retrieval paths apply that filter, so the index is **multi-tenant by namespace**
-rather than per-user files. This gives O(1) cold start vs reloading per-user
-indexes per request.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
+import shutil
 import sys
+import tempfile
 import threading
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
-# Ensure project root is importable so `video_qa.*` and `config_loader` resolve
-# regardless of how uvicorn is launched.
 _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -52,6 +50,7 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     status,
 )
@@ -68,10 +67,18 @@ from .schemas import (
     LoginIn,
     ProcessIn,
     ProcessOut,
+    ProcessURLIn,
+    ProcessURLOut,
     RegisterIn,
+    RequestResetIn,
+    RequestResetOut,
+    ResetPasswordIn,
+    ResetPasswordOut,
     TokenOut,
     UploadOut,
     UserOut,
+    VerifyOTPIn,
+    VerifyOTPOut,
     VideoOut,
 )
 
@@ -80,8 +87,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 
 # ── Constants ──────────────────────────────────────────────────────────
 MAX_UPLOAD_MB = int(os.environ.get("VIDEO_QA_MAX_UPLOAD_MB", "300"))
+MAX_URL_MB = 200
+MAX_URL_DURATION_MINUTES = 30
 ALLOWED_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".mp3", ".wav", ".m4a", ".mpeg4"}
 USER_UPLOAD_ROOT = Path("data/users")
+
+# Allowed YouTube domains for URL processing
+_ALLOWED_URL_DOMAINS = {"youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com"}
+
+# Rate limit windows
+_RATE_LOGIN_MAX    = 10   # per IP per 15 min
+_RATE_LOGIN_WIN    = 900
+_RATE_REGISTER_MAX = 5    # per IP per hour
+_RATE_REGISTER_WIN = 3600
+_RATE_OTP_MAX      = 3    # per user per hour
+_RATE_OTP_WIN      = 3600
+_RATE_URL_MAX      = 3    # per user per hour
+_RATE_URL_WIN      = 3600
 
 # ── App ────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -96,7 +118,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tighten in production via env-driven allowlist
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -105,17 +127,7 @@ app.add_middleware(
 bearer_scheme = HTTPBearer(auto_error=False)
 
 # ── Lazy pipeline singleton ────────────────────────────────────────────
-# Loading the embedding model + FAISS index takes ~2s, so we do it on the
-# first request that needs it, not at import time. This keeps `/health`,
-# `/auth/register`, and `/auth/login` snappy and lets the container start
-# before the first heavy call.
 _pipeline = None
-# Serializes both pipeline init and mutations of the shared FAISS index.
-# /process_video rebuilds the global index file, so concurrent calls would
-# race on the same on-disk artifacts and produce inconsistent retrieval.
-# A process-wide lock is sufficient because we run a single uvicorn worker
-# (see workflow command). For multi-replica deployments, replace this with
-# a durable job queue + cross-process advisory lock.
 _pipeline_lock = threading.Lock()
 _index_write_lock = threading.Lock()
 
@@ -144,6 +156,23 @@ def current_user(
     return user
 
 
+# ── Rate limiting helpers ──────────────────────────────────────────────
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _enforce_rate_limit(key: str, max_count: int, window_seconds: float, label: str) -> None:
+    if not db.check_rate_limit(key, max_count, window_seconds):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            f"Too many {label} attempts. Please try again later.",
+        )
+    db.record_rate_event(key)
+
+
 # ── Lifecycle ──────────────────────────────────────────────────────────
 @app.on_event("startup")
 def _startup() -> None:
@@ -152,8 +181,9 @@ def _startup() -> None:
     logger.info("[boot] DB initialized at %s", db.DB_PATH)
 
 
-# Multi-Video Compare module (additive, isolated — does not touch /ask_question)
+# Multi-Video Compare module
 app.include_router(compare_router)
+
 _static_dir = Path(__file__).parent / "static"
 if _static_dir.exists():
     app.mount("/ui", StaticFiles(directory=str(_static_dir), html=True), name="ui")
@@ -182,7 +212,14 @@ def health() -> HealthOut:
 
 # ── Auth routes ────────────────────────────────────────────────────────
 @app.post("/auth/register", response_model=TokenOut, tags=["auth"])
-def register(payload: RegisterIn) -> TokenOut:
+def register(payload: RegisterIn, request: Request) -> TokenOut:
+    ip = _client_ip(request)
+    _enforce_rate_limit(f"register:{ip}", _RATE_REGISTER_MAX, _RATE_REGISTER_WIN, "registration")
+
+    ok, err = auth.validate_password_strength(payload.password)
+    if not ok:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, err)
+
     if db.get_user_by_email(payload.email):
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
     user = db.create_user(payload.email, auth.hash_password(payload.password))
@@ -191,7 +228,10 @@ def register(payload: RegisterIn) -> TokenOut:
 
 
 @app.post("/auth/login", response_model=TokenOut, tags=["auth"])
-def login(payload: LoginIn) -> TokenOut:
+def login(payload: LoginIn, request: Request) -> TokenOut:
+    ip = _client_ip(request)
+    _enforce_rate_limit(f"login:{ip}", _RATE_LOGIN_MAX, _RATE_LOGIN_WIN, "login")
+
     user = db.get_user_by_email(payload.email)
     if not user or not auth.verify_password(payload.password, user["password_hash"]):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
@@ -202,6 +242,112 @@ def login(payload: LoginIn) -> TokenOut:
 @app.get("/auth/me", response_model=UserOut, tags=["auth"])
 def me(user: Dict[str, Any] = Depends(current_user)) -> UserOut:
     return UserOut(id=user["id"], email=user["email"], created_at=user["created_at"])
+
+
+# ── OTP / Password Reset ────────────────────────────────────────────────
+@app.post("/auth/request_reset", response_model=RequestResetOut, tags=["auth"])
+def request_reset(payload: RequestResetIn, request: Request) -> RequestResetOut:
+    ip = _client_ip(request)
+    _enforce_rate_limit(f"otp_req:{ip}", _RATE_OTP_MAX, _RATE_OTP_WIN, "OTP request")
+
+    # Always return generic message — never reveal whether the email exists
+    _GENERIC = "If the account exists, an OTP has been sent."
+
+    user = db.get_user_by_email(payload.email)
+    if not user:
+        return RequestResetOut(message=_GENERIC)
+
+    # Per-user rate limit (in addition to per-IP)
+    _enforce_rate_limit(f"otp_req_user:{user['id']}", _RATE_OTP_MAX, _RATE_OTP_WIN, "OTP request")
+
+    otp = auth.generate_otp()
+    otp_hash = auth.hash_otp(otp)
+    expiry = time.time() + auth.OTP_TTL_SECONDS
+    db.set_otp(user["id"], otp_hash, expiry)
+
+    # In production wire this to an email service; for now log it server-side.
+    logger.info("[otp] Generated OTP for user=%s (dev mode — not emailed)", user["id"])
+    logger.debug("[otp] OTP value=%s (never log in production)", otp)
+
+    return RequestResetOut(message=_GENERIC)
+
+
+@app.post("/auth/verify_otp", response_model=VerifyOTPOut, tags=["auth"])
+def verify_otp(payload: VerifyOTPIn) -> VerifyOTPOut:
+    user = db.get_user_by_email(payload.email)
+    if not user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid OTP or email.")
+
+    otp_data = db.get_otp_data(user["id"])
+    if not otp_data or not otp_data.get("otp_hash"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "No active OTP for this account.")
+
+    attempts = otp_data.get("otp_attempts") or 0
+    if attempts >= auth.OTP_MAX_ATTEMPTS:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            f"OTP blocked after {auth.OTP_MAX_ATTEMPTS} failed attempts. "
+            "Request a new OTP.",
+        )
+
+    expiry = otp_data.get("otp_expiry") or 0
+    if time.time() > expiry:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "OTP has expired. Request a new one.")
+
+    if not auth.verify_otp_hash(payload.otp, otp_data["otp_hash"]):
+        new_attempts = db.increment_otp_attempts(user["id"])
+        remaining = auth.OTP_MAX_ATTEMPTS - new_attempts
+        if remaining <= 0:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                f"Incorrect OTP. Account locked after {auth.OTP_MAX_ATTEMPTS} failed attempts.",
+            )
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Incorrect OTP. {remaining} attempt(s) remaining.",
+        )
+
+    db.mark_otp_verified(user["id"])
+    return VerifyOTPOut(message="OTP verified. You may now reset your password.", verified=True)
+
+
+@app.post("/auth/reset_password", response_model=ResetPasswordOut, tags=["auth"])
+def reset_password(payload: ResetPasswordIn) -> ResetPasswordOut:
+    user = db.get_user_by_email(payload.email)
+    if not user:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid request.")
+
+    otp_data = db.get_otp_data(user["id"])
+    if not otp_data or not otp_data.get("otp_verified"):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "OTP not verified. Complete /auth/verify_otp first.",
+        )
+
+    # Re-check OTP hasn't expired since verification
+    expiry = otp_data.get("otp_expiry") or 0
+    if time.time() > expiry:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "OTP session expired. Start over.")
+
+    # Re-verify OTP value on the reset call for defence-in-depth
+    attempts = otp_data.get("otp_attempts") or 0
+    if attempts >= auth.OTP_MAX_ATTEMPTS:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "OTP blocked. Request a new one.")
+
+    if not auth.verify_otp_hash(payload.otp, otp_data["otp_hash"]):
+        db.increment_otp_attempts(user["id"])
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid OTP.")
+
+    ok, err = auth.validate_password_strength(payload.new_password)
+    if not ok:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, err)
+
+    db.update_password(user["id"], auth.hash_password(payload.new_password))
+    db.invalidate_user_tokens(user["id"])
+    db.clear_otp(user["id"])
+
+    logger.info("[auth] Password reset for user=%s; all sessions invalidated.", user["id"])
+    return ResetPasswordOut(message="Password updated. Please log in with your new password.")
 
 
 # ── Helpers ────────────────────────────────────────────────────────────
@@ -215,7 +361,6 @@ def _slugify(name: str) -> str:
 
 
 def _namespaced_video_id(user_id: str, original_filename: str) -> str:
-    """Build a per-user video_id. Short uuid suffix avoids collisions on re-upload."""
     return f"{user_id}__{_slugify(original_filename)}-{uuid.uuid4().hex[:6]}"
 
 
@@ -223,7 +368,6 @@ def _ensure_owner(video: Optional[Dict[str, Any]], user_id: str, video_id: str) 
     if not video:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Video '{video_id}' not found")
     if video["user_id"] != user_id:
-        # Same as 404 to avoid leaking existence of other users' video_ids.
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Video '{video_id}' not found")
     return video
 
@@ -234,10 +378,6 @@ async def upload_video(
     file: UploadFile = File(...),
     user: Dict[str, Any] = Depends(current_user),
 ) -> UploadOut:
-    """Upload a media file. The file is persisted under
-    ``data/users/{user_id}/videos/{video_id}{ext}`` and registered in the DB
-    with status ``uploaded``. Use ``/process_video`` next to transcribe+index it.
-    """
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXTS:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Unsupported extension '{ext}'")
@@ -278,10 +418,6 @@ def process_video(
     payload: ProcessIn,
     user: Dict[str, Any] = Depends(current_user),
 ) -> ProcessOut:
-    """Transcribe + chunk + embed an uploaded video. This is synchronous and
-    can be slow for long media; the response only returns once indexing is
-    complete and the video is queryable.
-    """
     video = _ensure_owner(db.get_video(payload.video_id), user["id"], payload.video_id)
 
     user_dir = USER_UPLOAD_ROOT / user["id"] / "videos"
@@ -294,13 +430,6 @@ def process_video(
     db.update_video_status(payload.video_id, "processing")
     pipe = get_pipeline()
     try:
-        # The pipeline derives video_id from `Path(video_path).stem`, so naming
-        # the file `{video_id}{ext}` makes the stored chunks carry our
-        # namespaced id automatically. That id includes the user's uuid prefix,
-        # which the retrieval filter then uses for tenant isolation.
-        # Hold the index lock for the entire processing call: the pipeline
-        # rebuilds the shared FAISS index file at the end, and concurrent
-        # processing would otherwise produce torn writes.
         with _index_write_lock:
             result_id = pipe.process_video(str(src))
     except Exception as e:
@@ -317,6 +446,182 @@ def process_video(
                       detail=f"Indexed under id '{result_id}'")
 
 
+# ── URL Video Processing ───────────────────────────────────────────────
+
+def _validate_youtube_url(url: str) -> None:
+    """Raise HTTP 400 if the URL is not a supported YouTube URL."""
+    try:
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid URL format.")
+        netloc = parsed.netloc.lower()
+        if netloc not in _ALLOWED_URL_DOMAINS:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Only YouTube URLs are allowed (youtube.com / youtu.be). "
+                f"Received domain: '{parsed.netloc}'",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid URL format.")
+
+
+def _download_youtube_audio(url: str, tmp_dir: str) -> str:
+    """
+    Download audio-only from a YouTube URL using yt-dlp.
+    Runs synchronously — caller must wrap in asyncio.to_thread().
+    Returns path to the downloaded audio file.
+    Raises RuntimeError on failure.
+    """
+    try:
+        import yt_dlp
+    except ImportError:
+        raise RuntimeError("yt-dlp is not installed. Run: pip install yt-dlp")
+
+    max_bytes = MAX_URL_MB * 1024 * 1024
+    max_seconds = MAX_URL_DURATION_MINUTES * 60
+
+    out_tmpl = str(Path(tmp_dir) / "%(id)s.%(ext)s")
+
+    def _progress_hook(d: Dict[str, Any]) -> None:
+        if d.get("status") == "downloading":
+            downloaded = d.get("downloaded_bytes") or 0
+            if downloaded > max_bytes:
+                raise yt_dlp.utils.DownloadError(
+                    f"File exceeds {MAX_URL_MB} MB size limit"
+                )
+
+    ydl_opts = {
+        "outtmpl": out_tmpl,
+        "format": "bestaudio/best",
+        "quiet": True,
+        "no_warnings": True,
+        "noplaylist": True,
+        "progress_hooks": [_progress_hook],
+        "match_filter": yt_dlp.utils.match_filter_func(
+            f"duration <= {max_seconds}"
+        ),
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        },
+        "postprocessors": [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "wav",
+            "preferredquality": "128",
+        }],
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+        duration = (info or {}).get("duration") or 0
+        if duration > max_seconds:
+            raise RuntimeError(
+                f"Video is {duration // 60:.0f} min — exceeds the {MAX_URL_DURATION_MINUTES} min limit."
+            )
+        ydl.download([url])
+
+    candidates = [
+        f for f in Path(tmp_dir).glob("*.*")
+        if f.suffix.lower() not in {".webp", ".jpg", ".png", ".json"}
+    ]
+    if not candidates:
+        raise RuntimeError("Download completed but audio file not found.")
+    return str(candidates[0])
+
+
+@app.post("/process_url", response_model=ProcessURLOut, tags=["videos"])
+async def process_url(
+    payload: ProcessURLIn,
+    user: Dict[str, Any] = Depends(current_user),
+) -> ProcessURLOut:
+    """Download a YouTube video and run the full RAG pipeline on it.
+
+    Security:
+    - Only youtube.com / youtu.be are accepted (HTTP 400 otherwise).
+    - Max duration: 30 minutes. Max file size: 200 MB.
+    - Rate limited to 3 requests per user per hour.
+
+    The yt-dlp download runs in a background thread so the FastAPI event loop
+    is never blocked.
+    """
+    # 1. Validate URL domain
+    _validate_youtube_url(payload.url)
+
+    # 2. Per-user rate limit
+    _enforce_rate_limit(
+        f"url_proc:{user['id']}", _RATE_URL_MAX, _RATE_URL_WIN, "URL processing"
+    )
+
+    # 3. Build a namespaced video_id from the URL slug
+    url_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", payload.url.split("?v=")[-1])[:32] or "yt"
+    video_id = _namespaced_video_id(user["id"], url_slug)
+    db.register_video(video_id=video_id, user_id=user["id"],
+                      filename=payload.url, status="processing")
+
+    tmp_dir = tempfile.mkdtemp(prefix="videoqa_url_")
+    audio_path: Optional[str] = None
+    try:
+        # 4. Download audio in a background thread — NEVER block the event loop
+        logger.info("[url] user=%s downloading %s", user["id"], payload.url)
+        try:
+            audio_path = await asyncio.to_thread(
+                _download_youtube_audio, payload.url, tmp_dir
+            )
+        except RuntimeError as e:
+            db.update_video_status(video_id, "failed", str(e))
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+        except Exception as e:
+            db.update_video_status(video_id, "failed", f"Download failed: {e}")
+            logger.exception("[url] download failed for %s", payload.url)
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY,
+                f"Failed to download video: {e}",
+            )
+
+        # 5. Copy the audio into the user upload directory so the pipeline
+        #    produces a stable video_id (derived from the filename stem).
+        user_dir = USER_UPLOAD_ROOT / user["id"] / "videos"
+        user_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(audio_path).suffix
+        dest = user_dir / f"{video_id}{ext}"
+        shutil.copy2(audio_path, str(dest))
+
+        # 6. Run the pipeline synchronously inside a thread to keep FastAPI
+        #    responsive. The index write lock prevents concurrent FAISS writes.
+        pipe = get_pipeline()
+
+        def _run_pipeline() -> Optional[str]:
+            with _index_write_lock:
+                return pipe.process_video(str(dest))
+
+        try:
+            result_id = await asyncio.to_thread(_run_pipeline)
+        except Exception as e:
+            db.update_video_status(video_id, "failed", str(e))
+            logger.exception("[url] pipeline failed for video_id=%s", video_id)
+            raise HTTPException(
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                f"Processing failed: {e}",
+            )
+
+        if not result_id:
+            db.update_video_status(video_id, "failed", "Pipeline returned no video_id")
+            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Processing failed")
+
+        db.update_video_status(video_id, "ready")
+        logger.info("[url] user=%s video_id=%s indexed OK", user["id"], video_id)
+        return ProcessURLOut(
+            video_id=video_id,
+            status="ready",
+            detail=f"YouTube audio indexed under id '{result_id}'",
+        )
+
+    finally:
+        # 7. Always clean up the temp directory regardless of outcome
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 @app.get("/videos", response_model=List[VideoOut], tags=["videos"])
 def list_videos(user: Dict[str, Any] = Depends(current_user)) -> List[VideoOut]:
     rows = db.list_user_videos(user["id"])
@@ -329,12 +634,6 @@ def ask_question(
     payload: AskIn,
     user: Dict[str, Any] = Depends(current_user),
 ) -> AskOut:
-    """Ask a grounded question over the caller's videos.
-
-    - If ``video_id`` is provided, the answer is restricted to that video.
-    - If omitted, the answer is restricted to **all** videos the caller owns.
-      (We never search other users' content — enforced server-side.)
-    """
     if payload.video_id:
         video = _ensure_owner(db.get_video(payload.video_id), user["id"], payload.video_id)
         if video["status"] != "ready":
@@ -350,9 +649,6 @@ def ask_question(
                 status.HTTP_404_NOT_FOUND,
                 "You have no processed videos yet. Upload and process one first.",
             )
-        # Multi-video scope: ask the pipeline once per owned video and pick the
-        # answer with the highest support_score that isn't UNSUPPORTED. Cheap
-        # because cache + small per-user video counts.
         scope = None
 
     pipe = get_pipeline()
@@ -410,4 +706,5 @@ def root() -> Dict[str, Any]:
         "version": app.version,
         "docs": "/docs",
         "health": "/health",
+        "ui": "/ui",
     }

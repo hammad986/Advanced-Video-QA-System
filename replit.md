@@ -8,27 +8,39 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 
 - **Language**: Python 3.12
 - **API**: FastAPI + uvicorn (REST surface on port 5000)
-- **UI**: Streamlit (legacy interface, runs separately if needed)
-- **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing
-- **App DB**: SQLite at `data/saas.db` (users, videos)
+- **UI**: Static HTML/JS at `api/static/index.html` served at `/ui`
+- **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing + OTP password reset
+- **App DB**: SQLite at `data/saas.db` (users, videos, rate limit events)
 - **Embeddings**: `BAAI/bge-small-en` (via sentence-transformers)
 - **Vector Store**: FAISS (CPU)
-- **Speech-to-Text**: WhisperX / faster-whisper
-- **LLM Providers**: Ollama (local), Google Gemini, OpenAI, HuggingFace
+- **Speech-to-Text**: faster-whisper (Whisper tiny model)
+- **LLM Providers**: Ollama (local), Google Gemini, OpenAI, HuggingFace, AWS Bedrock
 - **Verification**: NLI-based (facebook/bart-large-mnli)
-- **Media Processing**: ffmpeg, yt-dlp
+- **Media Processing**: ffmpeg, yt-dlp (YouTube URL processing)
+
+## Entry Point
+
+```
+uvicorn api.main:app --host 0.0.0.0 --port 5000 --workers 1
+```
+
+Workflow: `Start application` in `.replit`
 
 ## Project Structure
 
 ```
-api/                # SaaS REST surface (uvicorn entrypoint: api.main:app)
-  main.py           # FastAPI app + routes
+api/
+  main.py           # FastAPI app + all routes
   schemas.py        # Pydantic request/response models
-  auth.py           # pbkdf2_sha256 + JWT (HS256) bearer auth
-  db.py             # SQLite (users, videos)
+  auth.py           # pbkdf2_sha256 + JWT + OTP utilities
+  db.py             # SQLite (users, videos, rate_limit_events)
+  compare.py        # Multi-video compare endpoint
+  compare_gating.py # Comparability gating logic
+  compare_ranking.py# Topic-strength ranking
+  static/
+    index.html      # Static frontend (served at /ui)
 
-video_qa/           # Core package
-  app.py            # Streamlit UI (legacy)
+video_qa/           # Core RAG pipeline package
   pipeline.py       # 9-stage RAG pipeline orchestrator
   video_processor.py
   speech_understanding.py
@@ -46,64 +58,127 @@ data/               # Runtime data
   transcripts/      # JSON transcripts
   chunks/           # Semantic chunks
   cache/            # Cached processed video data
+  users/            # Per-user uploaded video files
+  saas.db           # SQLite database
 
 models/             # Persistent FAISS index
   video_index.faiss
   metadata.pkl
 
 config.yaml         # Main configuration
+config_local.yaml   # Local override config
 config_loader.py    # Config loader (at project root)
-app.py              # Root launcher (delegates to video_qa/app.py)
+requirements.txt    # Python dependencies
 ```
 
-## Running the App
+## API Endpoints
 
-The app runs via the "Start application" workflow:
-```
-streamlit run video_qa/app.py --server.port 5000 --server.address 0.0.0.0
-```
+### Auth
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /auth/register | Create account (password policy enforced, rate-limited) |
+| POST | /auth/login | Get JWT bearer token (rate-limited) |
+| GET | /auth/me | Current user info (auth required) |
+| POST | /auth/request_reset | Request OTP for password reset (rate-limited) |
+| POST | /auth/verify_otp | Verify 6-digit OTP (max 5 attempts) |
+| POST | /auth/reset_password | Reset password after OTP verification |
+
+### Videos
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /upload_video | Upload a video/audio file (auth, max 300 MB) |
+| POST | /process_video | Transcribe + index an uploaded video (auth) |
+| POST | /process_url | Download + index a YouTube URL (auth, rate-limited, max 200 MB / 30 min) |
+| GET | /videos | List current user's videos (auth) |
+
+### Q&A
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | /ask_question | Ask a question against indexed videos (auth) |
+| POST | /compare_videos | Compare a question across multiple videos (auth) |
+
+### System
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Health probe (public) |
+| GET | /ui | Static frontend |
+| GET | /docs | Swagger UI |
+
+## Security Features
+
+### Password Policy
+All passwords (register + reset) must contain:
+- At least 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one digit
+- At least one special character
+
+### OTP Reset Flow
+1. `POST /auth/request_reset` → generates 6-digit OTP, SHA-256 hashed, 10-min expiry
+2. `POST /auth/verify_otp` → verifies OTP, max 5 attempts before lockout
+3. `POST /auth/reset_password` → requires verified OTP; invalidates all existing sessions
+
+### Rate Limiting (sliding window, per-IP or per-user)
+- Login: 10 requests / 15 min per IP
+- Register: 5 requests / hour per IP
+- OTP request: 3 requests / hour per IP + 3 per user
+- URL processing: 3 requests / hour per user
+
+### URL Processing Security
+- Only `youtube.com` and `youtu.be` domains accepted (HTTP 400 otherwise)
+- Max video duration: 30 minutes
+- Max file size: 200 MB
+- yt-dlp runs in `asyncio.to_thread()` — never blocks the FastAPI event loop
+
+### JWT Token Invalidation
+- Password reset invalidates all previously issued tokens via `tokens_invalidated_before` timestamp
+- Tokens with `iat < tokens_invalidated_before` are rejected
+
+## Environment Variables (Optional)
+
+Set via Replit Secrets:
+
+| Variable | Purpose |
+|----------|---------|
+| `GEMINI_API_KEY` | Google Gemini for answer generation + query rewriting |
+| `OPENAI_API_KEY` | OpenAI GPT-4 fallback |
+| `HF_TOKEN` | HuggingFace inference API fallback |
+| `XAI_API_KEY` | Grok (x.ai) fallback |
+| `JWT_SECRET` | Override JWT signing key (auto-generated if absent) |
+| `VIDEO_QA_MAX_UPLOAD_MB` | Override max upload size (default: 300) |
+| `BEDROCK_DISABLED` | Set to "1" to disable AWS Bedrock |
+| `LOCAL_MODE` | Set to "1" to force Ollama-only, no cloud LLM calls |
+
+If no API keys are set, the system uses an extractive fallback (no LLM) — the pipeline still works.
+
+## Answer Generation Provider Chain
+
+**Cloud mode** (default): Gemini → Grok → HuggingFace → Bedrock (last resort, capped) → Extractive fallback
+
+**Local mode** (`LOCAL_MODE=1`): Ollama → Extractive fallback
+
+Each provider has a 2-second hard timeout (`LLM_CALL_TIMEOUT_SECONDS` env var to override).
 
 ## Configuration
 
 - `config.yaml` — primary config (speech model size, embedding model, LLM providers, etc.)
-- `config_local.yaml` — local override config
-- `config_cloud.yaml` — Streamlit Cloud config
+- `config_local.yaml` — local development overrides
+- Speech model set to `tiny` to avoid OOM on CPU-only instances
+- Reranking disabled by default (too large for CPU-only)
+- Verification (NLI) enabled by default
 
-## Environment Variables
+## Performance Notes
 
-- `GEMINI_API_KEY` — Google Gemini API key (for query rewriting & answer generation)
-- `OPENAI_API_KEY` — OpenAI API key (optional)
-- `HF_TOKEN` — HuggingFace token (optional)
+- FAISS index pre-loaded on first request (cold start ~2s)
+- LRU query cache (256 entries) keyed on `(normalized_query, video_id)`
+- Single uvicorn worker + threading locks for FAISS index safety
+- For multi-replica deployments: replace `_index_write_lock` with a distributed advisory lock
 
-## Key Notes
+## Eval Results (`evaluation/last_report.json`)
 
-- `video_qa/app.py` manually adds the project root to `sys.path` at startup so `config_loader` can be found
-- Streamlit config in `.streamlit/config.toml` sets port 5000, address 0.0.0.0, CORS/XSRF disabled (required for Replit proxy)
-- The speech model is set to `tiny` in config.yaml to avoid OOM errors on CPU-only machines
-
-## Answer Generation
-
-- **Provider priority**: Gemini → Ollama (local) → OpenAI → HuggingFace → extractive fallback
-- **Gemini model**: `gemini-2.5-flash` with `temperature=0.1`, retries up to 3× on 429 rate limits with exponential backoff
-- **Prompt**: Passes the top-2 retrieved chunks with their `[mm:ss - mm:ss]` timestamps and strict rules (answer only from context, cite timestamp, say "Not found in video." if unknown)
-- **Retrieval scoping**: Strict — if `active_video_id` is provided and matches 0 chunks, an empty result is returned (no silent global fallback). When no `active_video_id` is provided, global retrieval is used.
-- **Extractive fallback**: Invoked from `generate_answer()` when the LLM returns empty/too-short output — returns top-chunk excerpt with its timestamp.
-- **Gemini daily-quota kill-switch**: Once a Gemini 429 with the "generate_content_free_tier_requests" daily quota marker is observed, a module-level flag disables Gemini for the rest of the process so subsequent queries do not pay retry/backoff time on unrecoverable errors.
-
-## SaaS-Grade Extensions (this branch)
-
-- `video_qa/cache.py` — thread-safe LRU query cache (256 entries) keyed on `(normalized_query, video_id)`. Verified 9/9 cache hits on second pass.
-- `video_qa/temporal_neighbors.py` — pulls prev/next chunks of the top-1 retrieved chunk from FAISS metadata grouped by `video_id`; neighbour text is appended to the LLM prompt for context continuity.
-- `video_qa/hallucination_detector.py` — deterministic post-check. Computes cosine similarity between answer embedding and concatenated-context embedding plus keyword overlap; classifies SUPPORTED / PARTIAL / UNSUPPORTED. PARTIAL caps confidence ≤ 70, UNSUPPORTED caps ≤ 35.
-- **Out-of-scope (OOS) gate** (in `pipeline.ask`): after retrieval, refuses immediately with `status="UNSUPPORTED"`, `confidence=10`, `provider="oos_gate"` when the **union of original + rewritten query content words** shares **zero** tokens with the top-1 chunk AND the top retrieval score is below `0.85`. Needed because BGE cosine scores stay in ~0.76–0.81 even for totally unrelated queries, so a score threshold alone cannot separate scope.
-- **Production response contract** from `pipeline.ask`:
-  `{answer, confidence, confidence_label, status, timestamp, chunk_ids, provider, contexts, support, neighbors, cached}`.
-- `evaluation/run_eval.py` + `evaluation/eval_dataset.json` (18 queries) / `evaluation/eval_dataset_small.json` (9 queries, fits Gemini free-tier daily quota). Metrics: retrieval_precision, answer_accuracy, hallucination_rate, refusal_correctness, mean_confidence, cache_hits, mean_latency.
-
-### Last eval results (`evaluation/last_report.json`)
-
-| metric | value |
-|---|---|
+| Metric | Value |
+|--------|-------|
 | retrieval_precision | 1.0 |
 | answer_accuracy | 0.67 |
 | hallucination_rate | 0.0 |
@@ -111,51 +186,3 @@ streamlit run video_qa/app.py --server.port 5000 --server.address 0.0.0.0
 | mean_confidence (in-scope) | 92.5 |
 | cache_hits_second_pass | 9/9 |
 | mean_latency | 4.0 s |
-
-## Topic-Strength + Recommendation Layer (`api/compare_ranking.py`)
-
-Final additive enhancement to `/compare_videos`. Pure deterministic ranking
-(NO LLM calls, no network) computed from the retrieval signals already
-produced by the gating step.
-
-- **Per-video scoring:** `score = 0.5·similarity + 0.3·coverage + 0.2·clarity`
-  - `similarity`: mean of top-k FAISS scores (clamped to 0..1)
-  - `coverage`: returned chunks / requested top_k_per_video
-  - `clarity`: text-stat heuristic (sentence length + word length anchors).
-    A floor of `n_words / 30` on the sentence count keeps ASR transcripts
-    without punctuation from collapsing to a single huge "sentence".
-- **best_video:** argmax of score, **only** when status ∈ {COMPARABLE, PARTIAL}.
-- **recommendation:** beginner = max clarity; revision = max coverage·similarity.
-- **differences:** pairwise factual deltas (sentence length, vocabulary
-  density, score) — emitted only when above MIN_*_DELTA thresholds.
-- **Strict withholding:** for NOT_COMPARABLE / INSUFFICIENT the route returns
-  `best_video=null`, `topic_strength={}`, `recommendation` with picks=null
-  plus a human-readable `explanation`, and `differences=[]`.
-- **No regressions:** `/ask_question` is untouched; existing CompareOut
-  fields are preserved (additive only).
-- **Validation:** route-level test forces all four gate decisions and
-  asserts the contract; ranker unit tests cover argmax / refusal branches.
-- **UI:** new per-card topic-strength pill, Recommendation card (beginner/
-  revision picks + explanation), and Key-differences list rendered below
-  the per-video grid. Empty/withheld states render the explanation only.
-
-## Optimised Multi-Provider Fallback (Apr 2026)
-Cost/latency-controlled answer chain in `video_qa/answer_generator.py` and
-rewrite chain in `video_qa/query_rewriter.py`.
-- **Query rewrite:** Gemini ONLY → deterministic `_rule_based_rewrite`
-  (filler-strip, contraction expansion, whitespace collapse, no LLM, no
-  network). Bedrock and other LLMs are intentionally excluded.
-- **Answer cloud chain:** Gemini → Grok (x.ai, OpenAI-compat HTTP) →
-  HuggingFace → **gated Bedrock** (Claude Haiku via boto3) → extractive.
-  Bedrock fires only when no provider above produced an acceptable answer
-  AND the per-process cap (`BEDROCK_MAX_CALLS`, default 5) is not reached.
-- **Local mode** (`LOCAL_MODE=1` or `answer.local_mode: true`): Ollama only,
-  no cloud calls, no Bedrock.
-- **Per-call budget:** 2 s wall-clock cap via a module-level
-  `ThreadPoolExecutor` (`LLM_CALL_TIMEOUT_SECONDS` overrides).
-- **Acceptability gate:** non-empty, length ≥ 5, not the not-found sentinel
-  and not the all-providers-down error string.
-- **Telemetry:** `generate_with_fallback` returns `provider`,
-  `fallback_level`, `latency_ms`, `total_latency_ms`, `providers_tried`;
-  `generate_answer` adds `bedrock_calls_used`; surfaced through `AskOut`
-  (additive, optional) so the UI / clients can audit cost & path.

@@ -31,6 +31,36 @@ class UserOut(BaseModel):
     created_at: float
 
 
+# ── OTP / Password Reset ───────────────────────────────────────────────
+
+class RequestResetIn(BaseModel):
+    email: EmailStr
+
+
+class RequestResetOut(BaseModel):
+    message: str  # always generic: "If the account exists, OTP has been sent"
+
+
+class VerifyOTPIn(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class VerifyOTPOut(BaseModel):
+    message: str
+    verified: bool
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ResetPasswordOut(BaseModel):
+    message: str
+
+
 # ── Videos ─────────────────────────────────────────────────────────────
 
 class VideoOut(BaseModel):
@@ -54,6 +84,18 @@ class ProcessIn(BaseModel):
 
 
 class ProcessOut(BaseModel):
+    video_id: str
+    status: str
+    detail: Optional[str] = None
+
+
+# ── URL Processing ─────────────────────────────────────────────────────
+
+class ProcessURLIn(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+
+
+class ProcessURLOut(BaseModel):
     video_id: str
     status: str
     detail: Optional[str] = None
@@ -90,8 +132,6 @@ class AskOut(BaseModel):
     neighbors: List[Dict[str, Any]] = []
     cached: bool = False
     latency_ms: int = 0
-    # Optimised fallback telemetry (additive). All optional so older clients
-    # that ignore them keep working.
     fallback_level: Optional[int] = None
     llm_latency_ms: Optional[int] = None
     providers_tried: List[str] = []
