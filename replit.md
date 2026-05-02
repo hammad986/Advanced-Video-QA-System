@@ -105,6 +105,7 @@ requirements.txt    # Python dependencies
 | POST | /upload_video | Upload a video/audio file (auth, max 300 MB). Returns immediately with `job_id` + `file_url`. |
 | GET  | /job_status/{job_id} | Poll background job progress: `{status, progress, stage, file_url, error}` (auth) |
 | GET  | /job_stream/{job_id} | SSE real-time progress stream — auth via `?token=<jwt>` query param (EventSource-compatible) |
+| POST | /process_url | Validate + enqueue a YouTube URL for background download+index (auth, rate-limited 3/hr/user). Returns `job_id` immediately. |
 | GET  | /media/{path} | Serve stored media file — requires `?token=<jwt>` query param (auth via query param) |
 | POST | /process_video | Transcribe + index an uploaded video (legacy, synchronous, auth) |
 | POST | /process_url | Download + index a YouTube URL (auth, rate-limited, max 200 MB / 30 min) |

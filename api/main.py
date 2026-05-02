@@ -795,103 +795,56 @@ def _validate_youtube_url(url: str) -> None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid URL format.")
 
 
-def _download_youtube_audio(url: str, tmp_dir: str) -> str:
-    try:
-        import yt_dlp
-    except ImportError:
-        raise RuntimeError("yt-dlp is not installed.")
-
-    max_bytes   = MAX_URL_MB * 1024 * 1024
-    max_seconds = MAX_URL_DURATION_MINUTES * 60
-
-    def _progress_hook(d: Dict[str, Any]) -> None:
-        if d.get("status") == "downloading":
-            if (d.get("downloaded_bytes") or 0) > max_bytes:
-                raise yt_dlp.utils.DownloadError(f"File exceeds {MAX_URL_MB} MB size limit")
-
-    ydl_opts = {
-        "outtmpl":       str(Path(tmp_dir) / "%(id)s.%(ext)s"),
-        "format":        "bestaudio/best",
-        "quiet":         True,
-        "no_warnings":   True,
-        "noplaylist":    True,
-        "progress_hooks":[_progress_hook],
-        "match_filter":  yt_dlp.utils.match_filter_func(f"duration <= {max_seconds}"),
-        "http_headers":  {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-        "postprocessors": [{"key": "FFmpegExtractAudio",
-                            "preferredcodec": "wav", "preferredquality": "128"}],
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=False)
-        duration = (info or {}).get("duration") or 0
-        if duration > max_seconds:
-            raise RuntimeError(
-                f"Video is {duration // 60:.0f} min — exceeds the {MAX_URL_DURATION_MINUTES} min limit.")
-        ydl.download([url])
-
-    candidates = [
-        f for f in Path(tmp_dir).glob("*.*")
-        if f.suffix.lower() not in {".webp", ".jpg", ".png", ".json"}
-    ]
-    if not candidates:
-        raise RuntimeError("Download completed but audio file not found.")
-    return str(candidates[0])
-
-
 @app.post("/process_url", response_model=ProcessURLOut, tags=["videos"])
 async def process_url(
     payload: ProcessURLIn,
     user: Dict[str, Any] = Depends(current_user),
 ) -> ProcessURLOut:
+    """Validate a YouTube URL, register it as a video, and enqueue it for
+    background download + indexing.  Returns immediately with job_id so the
+    client can track progress via GET /job_status/{job_id} or SSE
+    GET /job_stream/{job_id}.
+    """
     _validate_youtube_url(payload.url)
     _enforce_rate_limit(f"url_proc:{user['id']}", _RATE_URL_MAX, _RATE_URL_WIN, "URL processing")
 
-    url_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", payload.url.split("?v=")[-1])[:32] or "yt"
-    video_id = _namespaced_video_id(user["id"], url_slug)
-    db.register_video(video_id=video_id, user_id=user["id"],
-                      filename=payload.url, status="processing")
+    # Derive a short, friendly filename from the video ID part of the URL
+    parsed_url = urlparse(payload.url)
+    qs_params  = dict(pair.split("=", 1) for pair in (parsed_url.query or "").split("&") if "=" in pair)
+    vid_param  = qs_params.get("v") or parsed_url.path.lstrip("/").split("/")[-1] or "youtube"
+    clean_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", vid_param)[:32] or "youtube"
+    original_filename = f"youtube-{clean_slug}.wav"
 
-    tmp_dir = tempfile.mkdtemp(prefix="videoqa_url_")
-    try:
-        logger.info("[url] user=%s downloading %s", user["id"], payload.url)
-        try:
-            audio_path = await asyncio.to_thread(
-                _download_youtube_audio, payload.url, tmp_dir
-            )
-        except RuntimeError as e:
-            db.update_video_status(video_id, "failed", str(e))
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
-        except Exception as e:
-            db.update_video_status(video_id, "failed", f"Download failed: {e}")
-            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Failed to download video: {e}")
+    video_id = _namespaced_video_id(user["id"], clean_slug)
+    job_id   = uuid.uuid4().hex
 
-        user_dir = USER_UPLOAD_ROOT / user["id"] / "videos"
-        user_dir.mkdir(parents=True, exist_ok=True)
-        dest = user_dir / f"{video_id}{Path(audio_path).suffix}"
-        shutil.copy2(audio_path, str(dest))
+    db.register_video(
+        video_id=video_id,
+        user_id=user["id"],
+        filename=original_filename,
+        status="queued",
+        job_id=job_id,
+        file_url="",          # will be updated by the worker after yt-dlp download
+        source_url=payload.url,
+    )
 
-        pipe = get_pipeline()
+    enqueue_video_job(
+        job_id=job_id,
+        video_id=video_id,
+        user_id=user["id"],
+        file_url="",
+        original_filename=original_filename,
+        source_url=payload.url,
+    )
 
-        def _run_pipeline() -> Optional[str]:
-            with index_write_lock:
-                return pipe.process_video(str(dest))
-
-        try:
-            result_id = await asyncio.to_thread(_run_pipeline)
-        except Exception as e:
-            db.update_video_status(video_id, "failed", str(e))
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Processing failed: {e}")
-
-        if not result_id:
-            db.update_video_status(video_id, "failed", "Pipeline returned no video_id")
-            raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Processing failed")
-
-        db.update_video_status(video_id, "ready")
-        logger.info("[url] user=%s video_id=%s indexed OK", user["id"], video_id)
-        return ProcessURLOut(video_id=video_id, status="ready",
-                             detail=f"YouTube audio indexed under id '{result_id}'")
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+    logger.info("[url] user=%s  video_id=%s  job_id=%s  url=%s",
+                user["id"], video_id, job_id, payload.url)
+    return ProcessURLOut(
+        video_id=video_id,
+        job_id=job_id,
+        status="queued",
+        next=f"Stream progress: GET /job_stream/{job_id}?token=<bearer>",
+    )
 
 
 @app.get("/videos", response_model=List[VideoOut], tags=["videos"])

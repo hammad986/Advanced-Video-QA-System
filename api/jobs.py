@@ -70,8 +70,13 @@ def enqueue_video_job(
     user_id: str,
     file_url: str,
     original_filename: str,
+    source_url: Optional[str] = None,
 ) -> None:
-    """Submit a video-processing job to the active queue."""
+    """Submit a video-processing job to the active queue.
+
+    source_url: if set (YouTube URL), the worker downloads via yt-dlp instead of
+                pulling from storage.  file_url may be empty in that case.
+    """
     payload: Dict[str, Any] = {
         "job_id":            job_id,
         "video_id":          video_id,
@@ -79,12 +84,14 @@ def enqueue_video_job(
         "file_url":          file_url,
         "original_filename": original_filename,
     }
+    if source_url:
+        payload["source_url"] = source_url
     if _REDIS_URL:
         _rq_enqueue(payload)
     else:
         _thread_queue.put(payload)
-        logger.info("[jobs] thread-queued  job_id=%s  depth=%d",
-                    job_id, _thread_queue.qsize())
+        logger.info("[jobs] thread-queued  job_id=%s  depth=%d  source_url=%s",
+                    job_id, _thread_queue.qsize(), bool(source_url))
 
 
 def queue_mode() -> str:
@@ -129,6 +136,7 @@ def _run_with_retry(payload: Dict[str, Any]) -> None:
                 payload["file_url"],
                 payload["original_filename"],
                 attempt=attempt,
+                source_url=payload.get("source_url"),
             )
             return          # success
         except Exception as exc:
@@ -156,15 +164,19 @@ def _rq_enqueue(payload: Dict[str, Any]) -> None:
 
     job = q.enqueue(
         process_video_job,
-        payload["job_id"],
-        payload["video_id"],
-        payload["user_id"],
-        payload["file_url"],
-        payload["original_filename"],
+        kwargs={
+            "job_id":            payload["job_id"],
+            "video_id":          payload["video_id"],
+            "user_id":           payload["user_id"],
+            "file_url":          payload["file_url"],
+            "original_filename": payload["original_filename"],
+            "source_url":        payload.get("source_url"),
+        },
         job_id=payload["job_id"],
         job_timeout=_JOB_TIMEOUT,
         result_ttl=86400,
         failure_ttl=86400,
         retry=Retry(max=_MAX_RETRIES, interval=_RETRY_DELAYS),
     )
-    logger.info("[jobs] RQ-enqueued  job_id=%s  rq_job=%s", payload["job_id"], job.id)
+    logger.info("[jobs] RQ-enqueued  job_id=%s  rq_job=%s  source_url=%s",
+                payload["job_id"], job.id, bool(payload.get("source_url")))

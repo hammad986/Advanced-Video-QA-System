@@ -168,6 +168,7 @@ def _init_pg() -> None:
     _add_column_if_missing("videos", "progress",                  "INTEGER DEFAULT 0")
     _add_column_if_missing("videos", "stage",                     "TEXT DEFAULT 'queued'")
     _add_column_if_missing("videos", "file_url",                  "TEXT")
+    _add_column_if_missing("videos", "source_url",                "TEXT")
 
     # Step 3 — idempotent indexes (columns guaranteed to exist now)
     with _conn() as c:
@@ -232,6 +233,7 @@ def _init_sqlite() -> None:
         ("progress",                  "INTEGER DEFAULT 0"),
         ("stage",                     "TEXT DEFAULT 'queued'"),
         ("file_url",                  "TEXT"),
+        ("source_url",               "TEXT"),
     ]:
         _add_column_if_missing("users" if col in (
             "otp_hash", "otp_expiry", "otp_attempts", "otp_verified",
@@ -463,16 +465,17 @@ def register_video(
     status: str = "uploaded",
     job_id: Optional[str] = None,
     file_url: Optional[str] = None,
+    source_url: Optional[str] = None,
 ) -> None:
     now = time.time()
     with _conn() as c:
         c.execute(
             """INSERT INTO videos
                (video_id, user_id, filename, status, error,
-                created_at, updated_at, job_id, progress, stage, file_url)
-               VALUES (?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, ?)""",
+                created_at, updated_at, job_id, progress, stage, file_url, source_url)
+               VALUES (?, ?, ?, ?, NULL, ?, ?, ?, 0, ?, ?, ?)""",
             (video_id, user_id, filename, status,
-             now, now, job_id, status, file_url),
+             now, now, job_id, status, file_url, source_url),
         )
 
 
@@ -483,6 +486,15 @@ def update_video_status(
         c.execute(
             "UPDATE videos SET status = ?, error = ?, updated_at = ? WHERE video_id = ?",
             (status, error, time.time(), video_id),
+        )
+
+
+def update_video_file_url(video_id: str, file_url: str) -> None:
+    """Set the stored file_url for a video (used by URL-sourced jobs after download)."""
+    with _conn() as c:
+        c.execute(
+            "UPDATE videos SET file_url = ?, updated_at = ? WHERE video_id = ?",
+            (file_url, time.time(), video_id),
         )
 
 

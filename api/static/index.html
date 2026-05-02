@@ -250,6 +250,7 @@
   <nav id="tabs">
     <span class="tab" data-tab="ask">Single Video QA</span>
     <span class="tab active" data-tab="compare">Multi-Video Compare</span>
+    <span class="tab" data-tab="url">Paste URL</span>
   </nav>
   <span class="who" id="who"></span>
 </header>
@@ -339,6 +340,18 @@
       <div id="askStatusBanner"></div>
       <div class="answer" id="askAnswer"></div>
       <div id="askTimestamps" style="margin-top:12px;"></div>
+    </section>
+
+    <!-- ── PASTE URL TAB ── -->
+    <section id="urlCard" class="card hidden tab-pane" data-tab="url">
+      <h2>Add a YouTube video by URL</h2>
+      <p class="sub">Paste a YouTube link — the audio is downloaded, transcribed, and indexed in the background. Only youtube.com and youtu.be links are accepted (max 30 min / 200 MB). Limit: 3 URLs per hour.</p>
+      <label>YouTube URL</label>
+      <input id="urlInput" type="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" spellcheck="false" />
+      <div class="row" style="margin-top:14px;">
+        <button id="urlBtn">Add Video</button>
+      </div>
+      <div id="urlMsg"></div>
     </section>
 
     <!-- ── COMPARE TAB ── -->
@@ -775,6 +788,48 @@ function _updateCmpBanner(n) {
     el.textContent = `${n} videos selected ✓`;
   }
 }
+
+// ── Paste URL ──────────────────────────────────────────────────────────
+$("urlBtn").onclick = async () => {
+  const url = $("urlInput").value.trim();
+  setMsg($("urlMsg"), "");
+  if (!url) { setMsg($("urlMsg"), "Paste a YouTube URL first.", "err"); return; }
+
+  // Quick client-side domain guard (real validation is server-side)
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    if (!["youtube.com", "youtu.be", "m.youtube.com"].includes(host)) {
+      setMsg($("urlMsg"), "Only YouTube URLs are accepted (youtube.com, youtu.be).", "err"); return;
+    }
+  } catch { setMsg($("urlMsg"), "That doesn't look like a valid URL.", "err"); return; }
+
+  setMsg($("urlMsg"), spinHTML("Submitting…"), "info");
+  $("urlBtn").disabled = true;
+  try {
+    const r = await api("/process_url", { method: "POST", body: JSON.stringify({ url }) });
+    const label = url.length > 50 ? url.slice(0, 47) + "…" : url;
+    toast(`"${label}" queued — processing started`);
+    $("urlInput").value = "";
+    setMsg($("urlMsg"),
+      `<div class="ok">Queued! Watch the sidebar for progress.</div>`, "");
+    if (r.job_id && r.video_id) startStream(r.job_id, r.video_id);
+    loadVideos();
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    const msg = e.status === 429
+      ? "Rate limit reached — max 3 YouTube URLs per hour. Try again later."
+      : e.status === 400
+        ? escapeHtml(e.message)
+        : "Failed to queue video: " + escapeHtml(e.message);
+    setMsg($("urlMsg"), msg, "err");
+  } finally {
+    $("urlBtn").disabled = false;
+  }
+};
+// Submit on Enter in the URL field
+$("urlInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); $("urlBtn").click(); }
+});
 
 // ── Ask single video ───────────────────────────────────────────────────
 $("askBtn").onclick = async () => {

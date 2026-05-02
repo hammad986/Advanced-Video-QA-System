@@ -1,10 +1,1 @@
-{
-  "video_name": "audio",
-  "language": "en",
-  "language_confidence": 1.0,
-  "total_segments": 0,
-  "total_duration": 0,
-  "word_count": 0,
-  "full_transcript": "",
-  "segments": []
-}
+{"video_name": "audio", "language": "en", "language_confidence": 1.0, "total_segments": 0, "total_duration": 0, "word_count": 0, "full_transcript": "", "segments": []}

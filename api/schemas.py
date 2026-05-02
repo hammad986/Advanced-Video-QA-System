@@ -144,8 +144,9 @@ class ProcessURLIn(BaseModel):
 
 class ProcessURLOut(BaseModel):
     video_id: str
-    status: str
-    detail: Optional[str] = None
+    job_id: str
+    status: str = "queued"
+    next: str = ""
 
 
 # ── Q&A ────────────────────────────────────────────────────────────────
