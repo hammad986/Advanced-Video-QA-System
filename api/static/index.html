@@ -89,6 +89,19 @@
   .sb-empty { padding:22px 14px; text-align:center; color:var(--mut); font-size:12px;
               line-height:1.6; }
 
+  /* Stats line under filename */
+  .sv-stats { font-size:10px; color:var(--mut); margin-top:2px;
+              padding-left:21px; letter-spacing:.01em; }
+
+  /* Footer links (sidebar + login) */
+  .sb-foot { padding:8px 12px 10px; border-top:1px solid var(--line); flex-shrink:0;
+             display:flex; gap:12px; }
+  .sb-foot a { font-size:11px; color:var(--mut); text-decoration:none; }
+  .sb-foot a:hover { color:var(--fg); }
+  .login-foot { text-align:center; margin-top:18px; }
+  .login-foot a { font-size:12px; color:var(--mut); text-decoration:none; margin:0 6px; }
+  .login-foot a:hover { color:var(--fg); }
+
   /* Delete button on sidebar items */
   .sv-del { width:22px; height:22px; min-width:22px; padding:0; flex-shrink:0;
             background:transparent; border:none; color:var(--mut); font-size:13px;
@@ -312,6 +325,10 @@
       Continue with Google
     </button>
     <div id="authMsg"></div>
+    <div class="login-foot">
+      <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+      <a href="/terms" target="_blank" rel="noopener">Terms of Service</a>
+    </div>
   </section>
 </div>
 
@@ -346,6 +363,10 @@
 
     <div style="padding:10px 12px; border-top:1px solid var(--line); flex-shrink:0;">
       <button class="ghost logoutBtn" style="width:100%; font-size:12px; padding:7px 10px;">Sign out</button>
+    </div>
+    <div class="sb-foot">
+      <a href="/privacy" target="_blank" rel="noopener">Privacy</a>
+      <a href="/terms" target="_blank" rel="noopener">Terms</a>
     </div>
   </aside>
 
@@ -766,6 +787,11 @@ function _svItemHTML(v) {
       <button class="sv-del" title="Delete video"
               onclick="event.stopPropagation();confirmDeleteVideo('${escapeAttr(v.video_id)}','${escapeAttr(v.filename)}')">🗑</button>
     </div>
+    ${v.status === "ready" && (v.file_size_bytes != null || v.chunk_count != null) ? `
+    <div class="sv-stats">${[
+      v.file_size_bytes != null ? formatBytes(v.file_size_bytes) : null,
+      v.chunk_count     != null ? v.chunk_count + ' chunks' : null,
+    ].filter(Boolean).join(' · ')}</div>` : ""}
     ${inProg ? `
     <div class="sv-prog-wrap">
       <div class="sv-prog"><div class="sv-prog-bar sv-live" style="width:${pct}%"></div></div>
@@ -1113,6 +1139,13 @@ document.addEventListener("click", (ev) => {
     () => toast("Copy failed"));
 });
 function clamp01_100(n) { const v = Math.round(Number(n) || 0); return Math.max(0, Math.min(100, v)); }
+function formatBytes(n) {
+  if (n == null || n < 0) return "";
+  if (n < 1024)           return n + " B";
+  if (n < 1024 * 1024)    return (n / 1024).toFixed(1) + " KB";
+  if (n < 1024 ** 3)      return (n / (1024 * 1024)).toFixed(1) + " MB";
+  return (n / 1024 ** 3).toFixed(2) + " GB";
+}
 function escapeHtml(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));

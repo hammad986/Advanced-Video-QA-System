@@ -239,6 +239,19 @@ def process_video_job(
         if not result_id:
             raise RuntimeError("Pipeline returned no video_id after processing")
 
+        # Count chunks produced for this video and persist to DB ─────────
+        try:
+            import json as _json
+            _chunk_file = Path("data/chunks") / f"{result_id}.json"
+            if _chunk_file.exists():
+                _cdata = _json.loads(_chunk_file.read_text("utf-8"))
+                _n = len(_cdata.get("chunks") or _cdata.get("segments") or [])
+                if _n:
+                    db.update_video_chunk_count(video_id, _n)
+                    logger.info("[worker] chunk_count=%d stored for video_id=%s", _n, video_id)
+        except Exception as _cex:
+            logger.warning("[worker] could not store chunk_count: %s", _cex)
+
         # Done ────────────────────────────────────────────────────────────
         db.update_job_progress(job_id, 100, "ready", "ready")
         db.update_video_status(video_id, "ready")

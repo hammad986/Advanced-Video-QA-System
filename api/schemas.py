@@ -106,6 +106,8 @@ class VideoOut(BaseModel):
     progress: int = 0
     stage: Optional[str] = None
     file_url: Optional[str] = None
+    file_size_bytes: Optional[int] = None
+    chunk_count: Optional[int] = None
 
 
 class UploadOut(BaseModel):

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Privacy Policy — Video-QA</title>
+<style>
+  :root { --bg:#0b0f14; --panel:#141b24; --line:#22303f; --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+              font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+              font-size:15px; line-height:1.7; }
+  .wrap { max-width:720px; margin:0 auto; padding:48px 24px 80px; }
+  header { display:flex; align-items:center; gap:14px; margin-bottom:40px;
+           padding-bottom:20px; border-bottom:1px solid var(--line); }
+  header a { color:var(--acc); text-decoration:none; font-size:13px; }
+  header a:hover { text-decoration:underline; }
+  h1 { font-size:24px; margin:0; font-weight:700; }
+  h2 { font-size:16px; font-weight:700; margin:32px 0 8px; color:var(--fg); }
+  p  { margin:0 0 14px; color:#c8d0d9; }
+  ul { margin:0 0 14px; padding-left:22px; color:#c8d0d9; }
+  li { margin-bottom:6px; }
+  .updated { font-size:12px; color:var(--mut); margin-bottom:32px; }
+  a { color:var(--acc); }
+  footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--line);
+           font-size:12px; color:var(--mut); display:flex; gap:16px; }
+  footer a { color:var(--mut); text-decoration:none; }
+  footer a:hover { color:var(--fg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="/ui">← Back to Video-QA</a>
+    <h1>Privacy Policy</h1>
+  </header>
+  <p class="updated">Last updated: May 2, 2026</p>
+
+  <h2>1. What We Collect</h2>
+  <p>When you use Video-QA, we collect:</p>
+  <ul>
+    <li><strong>Account information</strong> — your email address and a hashed version of your password (we never store your password in plaintext).</li>
+    <li><strong>Video and audio files</strong> — files you upload or YouTube URLs you submit for processing.</li>
+    <li><strong>Transcripts and embeddings</strong> — machine-generated text derived from your media, used to power the Q&amp;A search index.</li>
+    <li><strong>Usage metadata</strong> — timestamps of uploads, processing status, and query logs stored per user account.</li>
+  </ul>
+  <p>We do not collect browser fingerprints, tracking cookies, or advertising identifiers.</p>
+
+  <h2>2. How We Use Your Data</h2>
+  <p>Your data is used exclusively to provide the Video-QA service:</p>
+  <ul>
+    <li><strong>AI processing</strong> — your audio is transcribed using a local speech-recognition model (Whisper). Transcripts are chunked, embedded, and stored in a local vector index so you can query them.</li>
+    <li><strong>Q&amp;A retrieval</strong> — your questions are compared against your video transcripts to generate grounded answers. Your queries are not used to train models.</li>
+    <li><strong>Authentication</strong> — your email is used only to identify your account and, if you opt in, to send one-time verification codes.</li>
+  </ul>
+  <p>We do not sell, rent, or share your data with third parties for commercial purposes.</p>
+
+  <h2>3. Storage and Retention</h2>
+  <ul>
+    <li>Uploaded files are stored on the server (or an S3-compatible bucket) under your account.</li>
+    <li>Transcripts and vector embeddings are stored locally on the server alongside the file.</li>
+    <li>When you delete a video, all associated files, transcripts, and index entries are permanently removed.</li>
+    <li>When you delete your account, all data is purged.</li>
+    <li>We do not retain backups of user-deleted content beyond routine server snapshots (rotated every 7 days).</li>
+  </ul>
+
+  <h2>4. Third-Party Services</h2>
+  <p>If you sign in with Google, your Google profile email and account ID are received and stored. We do not receive your Google password. Google's privacy policy governs their data handling.</p>
+  <p>If S3 storage is configured, files are transmitted to and stored by your configured cloud storage provider under your own credentials.</p>
+
+  <h2>5. Security</h2>
+  <p>All API endpoints require authentication. Passwords are hashed with bcrypt. Bearer tokens are short-lived JWTs. Media files are served only to authenticated owners via signed or token-gated URLs.</p>
+  <p>No system is perfectly secure. Do not upload content that you cannot afford to have disclosed in the event of a breach.</p>
+
+  <h2>6. Your Rights</h2>
+  <ul>
+    <li>You may delete any video at any time via the sidebar library.</li>
+    <li>You may request full account deletion by contacting the service operator.</li>
+    <li>You may export your transcripts by asking questions or using the API directly.</li>
+  </ul>
+
+  <h2>7. Children</h2>
+  <p>Video-QA is not directed at children under 13. If you believe a child has submitted personal information, contact us so we can delete it.</p>
+
+  <h2>8. Changes</h2>
+  <p>We may update this policy. Material changes will be noted here with a revised date. Continued use after changes constitutes acceptance.</p>
+
+  <h2>9. Contact</h2>
+  <p>Questions? Open an issue or contact the operator via the repository linked in the app.</p>
+
+  <footer>
+    <a href="/ui">Video-QA</a>
+    <a href="/terms">Terms of Service</a>
+    <a href="/privacy">Privacy Policy</a>
+  </footer>
+</div>
+</body>
+</html>

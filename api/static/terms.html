@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Terms of Service — Video-QA</title>
+<style>
+  :root { --bg:#0b0f14; --panel:#141b24; --line:#22303f; --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; padding:0; background:var(--bg); color:var(--fg);
+              font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+              font-size:15px; line-height:1.7; }
+  .wrap { max-width:720px; margin:0 auto; padding:48px 24px 80px; }
+  header { display:flex; align-items:center; gap:14px; margin-bottom:40px;
+           padding-bottom:20px; border-bottom:1px solid var(--line); }
+  header a { color:var(--acc); text-decoration:none; font-size:13px; }
+  header a:hover { text-decoration:underline; }
+  h1 { font-size:24px; margin:0; font-weight:700; }
+  h2 { font-size:16px; font-weight:700; margin:32px 0 8px; color:var(--fg); }
+  p  { margin:0 0 14px; color:#c8d0d9; }
+  ul { margin:0 0 14px; padding-left:22px; color:#c8d0d9; }
+  li { margin-bottom:6px; }
+  .updated { font-size:12px; color:var(--mut); margin-bottom:32px; }
+  a { color:var(--acc); }
+  footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--line);
+           font-size:12px; color:var(--mut); display:flex; gap:16px; }
+  footer a { color:var(--mut); text-decoration:none; }
+  footer a:hover { color:var(--fg); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a href="/ui">← Back to Video-QA</a>
+    <h1>Terms of Service</h1>
+  </header>
+  <p class="updated">Last updated: May 2, 2026</p>
+
+  <h2>1. Acceptance</h2>
+  <p>By creating an account or using Video-QA ("the Service"), you agree to these Terms of Service. If you do not agree, do not use the Service.</p>
+
+  <h2>2. Description of Service</h2>
+  <p>Video-QA is a research-grade tool that transcribes audio and video content using AI models, builds a local retrieval index, and lets you ask natural-language questions about that content. The Service is provided as-is for personal and research use.</p>
+
+  <h2>3. User Responsibility for Content</h2>
+  <p>You are solely responsible for the content you upload or link to. By submitting content you represent and warrant that:</p>
+  <ul>
+    <li>You own the content or have explicit permission from the rights holder to process it.</li>
+    <li>The content does not violate any applicable law, regulation, or third-party intellectual property right.</li>
+    <li>The content does not contain illegal material, including but not limited to CSAM, incitement to violence, or content that violates privacy laws.</li>
+  </ul>
+  <p>We reserve the right to remove content that violates these terms and to terminate accounts of repeat infringers.</p>
+
+  <h2>4. Acceptable Use</h2>
+  <p>You agree not to:</p>
+  <ul>
+    <li>Use the Service to process content you do not have the right to use.</li>
+    <li>Attempt to circumvent rate limits, authentication, or access controls.</li>
+    <li>Use automated scripts to abuse the API beyond normal personal use.</li>
+    <li>Upload content designed to compromise the service (malicious files, exploits).</li>
+    <li>Resell or sublicense access to the Service without authorization.</li>
+  </ul>
+
+  <h2>5. AI Processing Consent</h2>
+  <p>By uploading content, you consent to it being processed by local AI models for transcription, semantic chunking, and embedding. This processing happens on the server; your content is not sent to external AI APIs unless the service operator has explicitly configured a third-party LLM integration.</p>
+  <p>AI-generated answers may contain errors. Video-QA is a retrieval-augmented system and its outputs should not be relied upon for medical, legal, financial, or safety-critical decisions.</p>
+
+  <h2>6. Storage and Data Deletion</h2>
+  <p>Files and derived data (transcripts, embeddings) are stored under your account. You may delete any video at any time, which permanently removes all associated data. You may request full account deletion by contacting the operator.</p>
+
+  <h2>7. Service Availability</h2>
+  <p>The Service is provided "as is" without uptime guarantees. We may modify, suspend, or discontinue any aspect of the Service at any time without notice. We are not liable for loss of data or service interruption.</p>
+
+  <h2>8. Disclaimer of Warranties</h2>
+  <p>THE SERVICE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. YOU USE THE SERVICE AT YOUR OWN RISK.</p>
+
+  <h2>9. Limitation of Liability</h2>
+  <p>TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE OPERATOR SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SERVICE.</p>
+
+  <h2>10. Changes to Terms</h2>
+  <p>We may revise these Terms at any time. The updated date at the top reflects the latest revision. Continued use of the Service after changes are posted constitutes your acceptance of the new Terms.</p>
+
+  <h2>11. Governing Law</h2>
+  <p>These Terms are governed by the laws of the jurisdiction in which the service operator is located, without regard to conflict-of-law principles.</p>
+
+  <footer>
+    <a href="/ui">Video-QA</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+  </footer>
+</div>
+</body>
+</html>

@@ -169,6 +169,7 @@ def _init_pg() -> None:
     _add_column_if_missing("videos", "stage",                     "TEXT DEFAULT 'queued'")
     _add_column_if_missing("videos", "file_url",                  "TEXT")
     _add_column_if_missing("videos", "source_url",                "TEXT")
+    _add_column_if_missing("videos", "chunk_count",               "INTEGER")
 
     # Step 3 — idempotent indexes (columns guaranteed to exist now)
     with _conn() as c:
@@ -233,7 +234,8 @@ def _init_sqlite() -> None:
         ("progress",                  "INTEGER DEFAULT 0"),
         ("stage",                     "TEXT DEFAULT 'queued'"),
         ("file_url",                  "TEXT"),
-        ("source_url",               "TEXT"),
+        ("source_url",                "TEXT"),
+        ("chunk_count",               "INTEGER"),
     ]:
         _add_column_if_missing("users" if col in (
             "otp_hash", "otp_expiry", "otp_attempts", "otp_verified",
@@ -489,6 +491,15 @@ def update_video_status(
         )
 
 
+def update_video_chunk_count(video_id: str, count: int) -> None:
+    """Store the number of indexed chunks after pipeline processing."""
+    with _conn() as c:
+        c.execute(
+            "UPDATE videos SET chunk_count = ?, updated_at = ? WHERE video_id = ?",
+            (count, time.time(), video_id),
+        )
+
+
 def update_video_file_url(video_id: str, file_url: str) -> None:
     """Set the stored file_url for a video (used by URL-sourced jobs after download)."""
     with _conn() as c:
@@ -549,7 +560,8 @@ def list_user_videos(user_id: str) -> List[Dict[str, Any]]:
     with _conn() as c:
         rows = c.execute(
             """SELECT video_id, filename, status, error,
-                      created_at, updated_at, job_id, progress, stage, file_url
+                      created_at, updated_at, job_id, progress, stage, file_url,
+                      chunk_count
                FROM videos WHERE user_id = ? ORDER BY created_at DESC""",
             (user_id,),
         ).fetchall()

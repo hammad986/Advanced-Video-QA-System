@@ -900,8 +900,20 @@ def list_videos(user: Dict[str, Any] = Depends(current_user)) -> List[VideoOut]:
     result = []
     for r in rows:
         r = dict(r)
-        r["file_url"] = storage.resolve_url(r.get("file_url") or "")
-        r["progress"]  = int(r.get("progress") or 0)
+        raw_url = r.get("file_url") or ""
+        # File size — read from local disk before resolving to a signed URL
+        fsz: Optional[int] = None
+        lp = storage.local_path(raw_url) if raw_url else None
+        if lp:
+            try:
+                fsz = os.path.getsize(lp)
+            except OSError:
+                pass
+        r["file_size_bytes"] = fsz
+        # chunk_count comes from the DB (set by worker after pipeline finishes)
+        r["chunk_count"]     = r.get("chunk_count")
+        r["file_url"]        = storage.resolve_url(raw_url)
+        r["progress"]        = int(r.get("progress") or 0)
         result.append(VideoOut(**r))
     return result
 
@@ -966,6 +978,19 @@ def ask_question(
         providers_tried=result.get("providers_tried", []) or [],
         bedrock_calls_used=result.get("bedrock_calls_used"),
     )
+
+
+# ── Legal pages ─────────────────────────────────────────────────────────
+@app.get("/privacy", tags=["system"], include_in_schema=False)
+def privacy_page() -> FileResponse:
+    return FileResponse(str(Path(__file__).parent / "static" / "privacy.html"),
+                        media_type="text/html")
+
+
+@app.get("/terms", tags=["system"], include_in_schema=False)
+def terms_page() -> FileResponse:
+    return FileResponse(str(Path(__file__).parent / "static" / "terms.html"),
+                        media_type="text/html")
 
 
 # ── Root ────────────────────────────────────────────────────────────────
