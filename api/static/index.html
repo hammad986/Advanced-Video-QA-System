@@ -190,6 +190,29 @@
            transition:opacity .2s, transform .2s; pointer-events:none;
            z-index:100; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(-4px); }
+
+  .divider {
+    display:flex; align-items:center; gap:10px;
+    margin:18px 0 2px; color:var(--mut); font-size:12px;
+  }
+  .divider::before, .divider::after {
+    content:""; flex:1; height:1px; background:var(--line);
+  }
+  .btn-google {
+    background:#fff; color:#3c4043; border:1px solid #dadce0;
+    display:flex; align-items:center; justify-content:center;
+    gap:10px; font-weight:500; border-radius:6px;
+    padding:10px 12px; width:100%; cursor:pointer;
+    font-size:14px; font-family:inherit;
+    transition:background .15s, box-shadow .15s;
+    margin-top:10px;
+  }
+  .btn-google:hover:not(:disabled) {
+    filter:none; background:#f8f9fa;
+    box-shadow:0 1px 6px rgba(0,0,0,.22);
+  }
+  .btn-google:active:not(:disabled) { background:#f1f3f4; }
+  .btn-google svg { flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -217,6 +240,16 @@
         <button id="registerBtn" type="button" class="ghost">Create account</button>
       </div>
     </form>
+    <div class="divider"><span>or</span></div>
+    <button id="googleBtn" class="btn-google" type="button">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      Continue with Google
+    </button>
     <div id="authMsg"></div>
   </section>
 
@@ -378,6 +411,7 @@ async function authPost(path) {
 }
 $("loginBtn").onclick = () => authPost("/auth/login");
 $("registerBtn").onclick = () => authPost("/auth/register");
+$("googleBtn").onclick = () => { location.href = "/auth/google"; };
 
 document.querySelectorAll(".logoutBtn").forEach(b => b.onclick = () => {
   localStorage.removeItem(TOKEN_KEY);
@@ -391,6 +425,13 @@ function showApp() {
   $("who").textContent = localStorage.getItem(EMAIL_KEY) || "";
   switchTab(currentTab);
   loadVideos();
+  // Refresh displayed email — covers OAuth logins where email isn't in localStorage
+  api("/auth/me").then(u => {
+    if (u && u.email) {
+      localStorage.setItem(EMAIL_KEY, u.email);
+      $("who").textContent = u.email;
+    }
+  }).catch(() => {});
 }
 function showLogin() {
   $("loginCard").classList.remove("hidden");
@@ -695,7 +736,22 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s); }
 
 // ── Boot ──────────────────────────────────────────────────────────────
-if (localStorage.getItem(TOKEN_KEY)) showApp(); else showLogin();
+(function () {
+  // Pick up JWT from URL fragment after Google OAuth redirect (/ui#token=…)
+  const hash = location.hash;
+  if (hash.includes("token=")) {
+    const params = new URLSearchParams(hash.slice(1));
+    const tok = params.get("token");
+    if (tok) {
+      localStorage.setItem(TOKEN_KEY, tok);
+      // Remove fragment so the token doesn't sit in the browser history
+      history.replaceState(null, "", location.pathname + location.search);
+      showApp();
+      return;
+    }
+  }
+  if (localStorage.getItem(TOKEN_KEY)) showApp(); else showLogin();
+})();
 </script>
 </body>
 </html>
