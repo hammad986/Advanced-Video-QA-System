@@ -8,7 +8,7 @@ A research-grade Video Question Answering (Video-QA) system using Retrieval-Augm
 
 - **Language**: Python 3.12
 - **API**: FastAPI + uvicorn (REST surface on port 5000)
-- **UI**: Static HTML/JS at `api/static/index.html` served at `/ui`
+- **UI**: Static HTML/JS at `api/static/index.html` served at `/ui` — SSE-first progress (EventSource), polling fallback, animated live-dot + shimmer, human-readable stage labels
 - **Auth**: JWT (HS256, 7-day TTL) + pbkdf2_sha256 password hashing + OTP password reset + Google OAuth
 - **App DB**: PostgreSQL (primary, `DATABASE_URL` env var) with SQLite fallback at `data/saas.db`
 - **Background Jobs**: Python `threading.Queue` in-process worker with retry (default); RQ + external `rq worker` process if `REDIS_URL` set (retry via `rq.Retry`, `job_timeout=3600s`, 2 worker replicas in Docker)

@@ -77,8 +77,15 @@
   .sv-prog-wrap { margin-top:5px; padding-left:21px; }
   .sv-prog { height:3px; background:#1a2230; border-radius:2px; overflow:hidden;
              margin-bottom:3px; }
-  .sv-prog-bar { height:100%; background:var(--acc); transition:width .4s; }
+  .sv-prog-bar { height:100%; background:var(--acc); transition:width .5s ease; border-radius:2px; }
+  .sv-prog-bar.sv-live { animation:prog-pulse 2s ease-in-out infinite; }
+  @keyframes prog-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
   .sv-stage { font-size:10px; color:var(--mut); }
+  .sv-live-dot { display:inline-block; width:6px; height:6px; border-radius:50%;
+    background:var(--acc); margin-right:5px; flex-shrink:0;
+    animation:dot-blink 1.2s ease-in-out infinite; }
+  @keyframes dot-blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.25;transform:scale(.6)} }
+  .sv-stage-wrap { display:flex; align-items:center; }
   .sb-empty { padding:22px 14px; text-align:center; color:var(--mut); font-size:12px;
               line-height:1.6; }
 
@@ -374,7 +381,24 @@ const EMAIL_KEY = "vqa_email";
 let videosCache   = [];
 let currentTab    = "compare";
 let selectedVidId = null;
-const _pollers    = {};   // jobId → intervalId
+const _streams    = {};   // jobId → EventSource  (SSE, primary)
+const _pollers    = {};   // jobId → intervalId   (polling, fallback only)
+
+// Human-readable stage labels
+const STAGE_LABELS = {
+  queued:       "Queued",
+  downloading:  "Downloading…",
+  validating:   "Validating…",
+  normalizing:  "Normalising audio…",
+  transcribing: "Transcribing speech…",
+  indexing:     "Building search index…",
+  processing:   "Processing…",
+  ready:        "Ready",
+  failed:       "Failed",
+};
+function stageLabel(stage) {
+  return STAGE_LABELS[stage] || (stage ? stage.charAt(0).toUpperCase() + stage.slice(1) + "…" : "Processing…");
+}
 
 // ── Toast ──────────────────────────────────────────────────────────────
 let _toastTimer = 0;
@@ -452,7 +476,7 @@ $("googleBtn").onclick   = () => { location.href = "/auth/google"; };
 document.querySelectorAll(".logoutBtn").forEach(b => b.onclick = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
-  Object.values(_pollers).forEach(clearInterval);
+  closeAllStreams();
   showLogin();
 });
 
@@ -480,7 +504,7 @@ function showLogin() {
 function onAuthExpired() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(EMAIL_KEY);
-  Object.values(_pollers).forEach(clearInterval);
+  closeAllStreams();
   showLogin();
   setMsg($("authMsg"), "Your session expired. Please sign in again.", "err");
 }
@@ -527,7 +551,7 @@ $("fileInput").onchange = async (ev) => {
     });
 
     toast(`"${file.name}" uploaded — processing started`);
-    if (result.job_id) startPolling(result.job_id, result.video_id);
+    if (result.job_id) startStream(result.job_id, result.video_id);
     loadVideos();
   } catch (e) {
     toast("Upload failed: " + e.message);
@@ -536,39 +560,116 @@ $("fileInput").onchange = async (ev) => {
   }
 };
 
-// ── Job polling ────────────────────────────────────────────────────────
-function startPolling(jobId, videoId) {
-  if (_pollers[jobId]) return;
-  _pollers[jobId] = setInterval(async () => {
-    try {
-      const s = await api(`/job_status/${jobId}`);
+// ── Job progress tracking — SSE primary, polling fallback ──────────────
+
+function startStream(jobId, videoId) {
+  if (_streams[jobId] || _pollers[jobId]) return;   // already tracking
+  const tok = localStorage.getItem(TOKEN_KEY);
+  if (!tok) return;
+
+  let sseReceived = false;
+  let closed      = false;
+
+  function _close(es) {
+    if (closed) return; closed = true;
+    try { es.close(); } catch {}
+    delete _streams[jobId];
+  }
+
+  function _startFallback() {
+    if (_pollers[jobId]) return;
+    _pollers[jobId] = setInterval(async () => {
+      try {
+        const s = await api(`/job_status/${jobId}`);
+        _applyProgressToItem(videoId, s);
+        if (s.status === "ready" || s.status === "failed") {
+          clearInterval(_pollers[jobId]); delete _pollers[jobId];
+          _onJobDone(s);
+        }
+      } catch {
+        clearInterval(_pollers[jobId]); delete _pollers[jobId];
+      }
+    }, 1500);
+  }
+
+  function _onJobDone(s) {
+    if (s.status === "ready") {
+      toast("Processing complete! ✓");
+      loadVideos();
+    } else {
+      toast("Processing failed: " + (s.error || "unknown error"));
+      loadVideos();
+    }
+  }
+
+  let es;
+  try {
+    es = new EventSource(`/job_stream/${encodeURIComponent(jobId)}?token=${encodeURIComponent(tok)}`);
+    _streams[jobId] = es;
+
+    // Heartbeat / comment lines don't fire onmessage — set a connect timeout
+    const connectTimeout = setTimeout(() => {
+      if (!sseReceived) { _close(es); _startFallback(); }
+    }, 5000);
+
+    es.onopen = () => { clearTimeout(connectTimeout); };
+
+    es.onmessage = (ev) => {
+      clearTimeout(connectTimeout);
+      sseReceived = true;
+      let s;
+      try { s = JSON.parse(ev.data); } catch { return; }
+      if (!s || s.error === "Unauthorized") { onAuthExpired(); return; }
+      if (s.error) { _close(es); _startFallback(); return; }
       _applyProgressToItem(videoId, s);
       if (s.status === "ready" || s.status === "failed") {
-        clearInterval(_pollers[jobId]);
-        delete _pollers[jobId];
-        if (s.status === "ready") {
-          toast("Processing complete!");
-          loadVideos();
-        } else {
-          toast("Processing failed: " + (s.error || "unknown error"));
-        }
+        _close(es);
+        _onJobDone(s);
       }
-    } catch (e) {
-      clearInterval(_pollers[jobId]);
-      delete _pollers[jobId];
-    }
-  }, 1000);
+    };
+
+    es.onerror = () => {
+      clearTimeout(connectTimeout);
+      _close(es);
+      if (!sseReceived) _startFallback();
+      // If we already got events the stream just ended cleanly — no fallback needed
+    };
+
+  } catch {
+    _startFallback();
+  }
+}
+
+function closeAllStreams() {
+  Object.entries(_streams).forEach(([, es]) => { try { es.close(); } catch {} });
+  Object.keys(_streams).forEach(k => delete _streams[k]);
+  Object.values(_pollers).forEach(clearInterval);
+  Object.keys(_pollers).forEach(k => delete _pollers[k]);
 }
 
 function _applyProgressToItem(videoId, s) {
   const el = document.querySelector(`#videoLibrary [data-vid="${CSS.escape(videoId)}"]`);
   if (!el) return;
-  const badge = el.querySelector(".sv-badge");
+  const inProg = s.status === "queued" || s.status === "processing";
+  const badge  = el.querySelector(".sv-badge");
   if (badge) { badge.className = `sv-badge ${s.status}`; badge.textContent = s.status; }
-  const bar   = el.querySelector(".sv-prog-bar");
-  if (bar) bar.style.width = (s.progress || 0) + "%";
-  const stage = el.querySelector(".sv-stage");
-  if (stage) stage.textContent = (s.stage || s.status) + "…";
+  // Ensure progress row is visible for in-progress items
+  let wrap = el.querySelector(".sv-prog-wrap");
+  if (!wrap && inProg) {
+    wrap = document.createElement("div"); wrap.className = "sv-prog-wrap";
+    wrap.innerHTML = `<div class="sv-prog"><div class="sv-prog-bar sv-live" style="width:0%"></div></div>
+      <div class="sv-stage-wrap"><span class="sv-live-dot"></span><span class="sv-stage"></span></div>`;
+    el.appendChild(wrap);
+  }
+  const bar = el.querySelector(".sv-prog-bar");
+  if (bar) {
+    bar.style.width = (s.progress || 0) + "%";
+    bar.classList.toggle("sv-live", inProg);
+  }
+  const stEl = el.querySelector(".sv-stage");
+  if (stEl) stEl.textContent = stageLabel(s.stage || s.status);
+  // Hide the progress row once done
+  if (wrap && !inProg) wrap.style.display = "none";
 }
 
 // ── Videos ─────────────────────────────────────────────────────────────
@@ -578,10 +679,10 @@ async function loadVideos() {
     const vids = await api("/videos");
     videosCache = vids || [];
     renderSidebar();
-    // Re-start polling for any in-progress jobs
+    // Re-attach SSE streams for any in-progress jobs
     for (const v of videosCache) {
       if ((v.status === "queued" || v.status === "processing") && v.job_id) {
-        startPolling(v.job_id, v.video_id);
+        startStream(v.job_id, v.video_id);
       }
     }
   } catch (e) {
@@ -607,7 +708,6 @@ function renderSidebar() {
 function _svItemHTML(v) {
   const inProg = v.status === "queued" || v.status === "processing";
   const pct    = v.progress || 0;
-  const stage  = v.stage || v.status;
   const active = v.video_id === selectedVidId;
   return `
   <div class="sv-item${active ? " sv-active" : ""}" data-vid="${escapeAttr(v.video_id)}">
@@ -621,8 +721,11 @@ function _svItemHTML(v) {
     </div>
     ${inProg ? `
     <div class="sv-prog-wrap">
-      <div class="sv-prog"><div class="sv-prog-bar" style="width:${pct}%"></div></div>
-      <div class="sv-stage">${escapeHtml(stage)}…</div>
+      <div class="sv-prog"><div class="sv-prog-bar sv-live" style="width:${pct}%"></div></div>
+      <div class="sv-stage-wrap">
+        <span class="sv-live-dot"></span>
+        <span class="sv-stage">${escapeHtml(stageLabel(v.stage || v.status))}</span>
+      </div>
     </div>` : ""}
   </div>`;
 }
