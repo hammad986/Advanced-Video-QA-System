@@ -847,6 +847,53 @@ async def process_url(
     )
 
 
+@app.delete("/videos/{video_id}", status_code=204, tags=["videos"])
+async def delete_video(
+    video_id: str,
+    user: Dict[str, Any] = Depends(current_user),
+) -> None:
+    """Permanently delete a video: DB row + storage file + vector-index chunks.
+
+    Returns 204 on success.  Returns 404 (not 403) when the video does not
+    exist *or* belongs to a different user — prevents enumeration.
+    """
+    video = db.get_video(video_id)
+    # Ownership check: treat "not mine" as "not found" (no 403 enumeration leak)
+    if not video or video["user_id"] != user["id"]:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Video '{video_id}' not found")
+
+    stored_url = video.get("file_url") or ""
+
+    # 1. Remove DB row first (idempotent if storage/index cleanup fails)
+    db.delete_video(video_id)
+    logger.info("[delete] user=%s video_id=%s db_row=removed", user["id"], video_id)
+
+    # 2. Remove storage file (S3 key or local directory)
+    try:
+        await asyncio.to_thread(storage.delete, stored_url, video_id)
+        logger.info("[delete] video_id=%s storage=removed", video_id)
+    except Exception as exc:
+        logger.warning("[delete] video_id=%s storage cleanup failed: %s", video_id, exc)
+
+    # 3. Remove all FAISS chunks for this video — holds the write lock so
+    #    concurrent queries are not disrupted mid-rebuild.
+    try:
+        from video_qa.embeddings import delete_video_from_index
+        removed = await asyncio.to_thread(
+            _purge_vector_index, video_id
+        )
+        logger.info("[delete] video_id=%s vector_chunks_removed=%d", video_id, removed)
+    except Exception as exc:
+        logger.warning("[delete] video_id=%s vector index cleanup failed: %s", video_id, exc)
+
+
+def _purge_vector_index(video_id: str) -> int:
+    """Run delete_video_from_index under the pipeline write lock."""
+    from video_qa.embeddings import delete_video_from_index
+    with index_write_lock:
+        return delete_video_from_index(video_id)
+
+
 @app.get("/videos", response_model=List[VideoOut], tags=["videos"])
 def list_videos(user: Dict[str, Any] = Depends(current_user)) -> List[VideoOut]:
     rows = db.list_user_videos(user["id"])

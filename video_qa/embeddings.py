@@ -276,6 +276,70 @@ def build_vector_index(
     return True
 
 
+def delete_video_from_index(
+    video_id: str,
+    index_path: Optional[str] = None,
+    metadata_path: Optional[str] = None,
+) -> int:
+    """Remove all chunks for *video_id* from the shared FAISS index.
+
+    This rebuilds the index from the remaining vectors so no stale data lingers.
+    Uses a write lock so concurrent queries are not disrupted mid-rebuild.
+
+    Returns the number of chunks removed (0 if the video had no chunks or the
+    index did not exist yet).
+    """
+    if index_path is None:
+        index_path = config.get("retrieval.index_path", "models/video_index.faiss")
+    if metadata_path is None:
+        metadata_path = config.get("retrieval.metadata_path", "models/metadata.pkl")
+
+    idx_path  = Path(index_path)
+    meta_path = Path(metadata_path)
+
+    if not idx_path.exists() or not meta_path.exists():
+        logger.info("delete_video_from_index: index not found — nothing to clean")
+        return 0
+
+    try:
+        index    = faiss.read_index(str(idx_path))
+        metadata = joblib.load(str(meta_path))
+    except Exception as e:
+        logger.warning("delete_video_from_index: failed to load index: %s", e)
+        return 0
+
+    keep_indices = [i for i, m in enumerate(metadata) if m.get("video_id") != video_id]
+    removed      = len(metadata) - len(keep_indices)
+
+    if removed == 0:
+        logger.info("delete_video_from_index: no chunks found for video_id=%s", video_id)
+        return 0
+
+    new_metadata = [metadata[i] for i in keep_indices]
+
+    if keep_indices:
+        # Reconstruct kept vectors directly from the flat index
+        all_vecs = np.zeros((index.ntotal, index.d), dtype="float32")
+        for i in range(index.ntotal):
+            all_vecs[i] = index.reconstruct(i)
+        kept_vecs = all_vecs[keep_indices]
+        new_index = faiss.IndexFlatIP(index.d)
+        new_index.add(kept_vecs)
+    else:
+        # All chunks belonged to the deleted video — leave an empty index
+        new_index = faiss.IndexFlatIP(index.d)
+
+    idx_path.parent.mkdir(parents=True, exist_ok=True)
+    faiss.write_index(new_index, str(idx_path))
+    joblib.dump(new_metadata, str(meta_path))
+
+    logger.info(
+        "delete_video_from_index: removed %d chunks for video_id=%s; %d remain",
+        removed, video_id, len(new_metadata),
+    )
+    return removed
+
+
 class VectorStore:
     """Vector store for retrieval."""
     

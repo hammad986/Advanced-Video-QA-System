@@ -537,6 +537,14 @@ def get_video_by_job_id(job_id: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
+def delete_video(video_id: str) -> bool:
+    """Hard-delete a video row. Returns True if a row was removed."""
+    with _conn() as c:
+        cur = c.execute("DELETE FROM videos WHERE video_id = ?", (video_id,))
+        # rowcount works on both psycopg2 and sqlite3
+        return (cur._c.rowcount or 0) > 0
+
+
 def list_user_videos(user_id: str) -> List[Dict[str, Any]]:
     with _conn() as c:
         rows = c.execute(

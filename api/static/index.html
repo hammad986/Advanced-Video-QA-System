@@ -89,6 +89,26 @@
   .sb-empty { padding:22px 14px; text-align:center; color:var(--mut); font-size:12px;
               line-height:1.6; }
 
+  /* Delete button on sidebar items */
+  .sv-del { width:22px; height:22px; min-width:22px; padding:0; flex-shrink:0;
+            background:transparent; border:none; color:var(--mut); font-size:13px;
+            cursor:pointer; border-radius:4px; display:flex; align-items:center;
+            justify-content:center; transition:color .15s,background .15s; }
+  .sv-del:hover:not(:disabled) { color:var(--err); background:#2a1010;
+                                  filter:none; }
+
+  /* Confirmation modal */
+  #delModal { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:9999;
+              display:flex; align-items:center; justify-content:center; }
+  #delModal.hidden { display:none; }
+  .del-box { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+             padding:24px 26px; max-width:360px; width:90%; }
+  .del-box h3 { margin:0 0 8px; font-size:15px; }
+  .del-box p  { font-size:13px; color:var(--mut); margin:0 0 20px; line-height:1.5; }
+  .del-box .row { gap:10px; }
+  .del-box .row button { flex:1; }
+  #delConfirmBtn { background:#c0392b; border-color:#c0392b; }
+
   /* Upload progress placeholder */
   .sv-uploading { display:flex; align-items:center; gap:7px;
                   padding:8px 9px; font-size:12px; color:var(--mut); }
@@ -243,6 +263,18 @@
 </style>
 </head>
 <body>
+<!-- ── Delete confirmation modal ── -->
+<div id="delModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="delModalTitle">
+  <div class="del-box">
+    <h3 id="delModalTitle">Delete video?</h3>
+    <p id="delModalDesc">This will permanently remove the video, its transcript, and all indexed content. This cannot be undone.</p>
+    <div class="row">
+      <button class="ghost" id="delCancelBtn">Cancel</button>
+      <button id="delConfirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="root-wrap">
 
 <header>
@@ -731,6 +763,8 @@ function _svItemHTML(v) {
              onchange="_updateCmpBanner(document.querySelectorAll('#videoLibrary .sv-check:checked').length)">
       <span class="sv-name">${escapeHtml(v.filename)}</span>
       <span class="sv-badge ${escapeAttr(v.status)}">${escapeHtml(v.status)}</span>
+      <button class="sv-del" title="Delete video"
+              onclick="event.stopPropagation();confirmDeleteVideo('${escapeAttr(v.video_id)}','${escapeAttr(v.filename)}')">🗑</button>
     </div>
     ${inProg ? `
     <div class="sv-prog-wrap">
@@ -742,6 +776,64 @@ function _svItemHTML(v) {
     </div>` : ""}
   </div>`;
 }
+
+// ── Delete video ───────────────────────────────────────────────────────
+let _pendingDeleteId   = null;
+let _pendingDeleteName = null;
+
+function confirmDeleteVideo(videoId, filename) {
+  _pendingDeleteId   = videoId;
+  _pendingDeleteName = filename;
+  $("delModalDesc").textContent =
+    `"${filename.length > 60 ? filename.slice(0,57)+"…" : filename}" will be permanently removed — ` +
+    "transcript, index, and file. This cannot be undone.";
+  $("delModal").classList.remove("hidden");
+  $("delConfirmBtn").focus();
+}
+
+$("delCancelBtn").onclick = () => {
+  _pendingDeleteId = _pendingDeleteName = null;
+  $("delModal").classList.add("hidden");
+};
+
+// Close on backdrop click
+$("delModal").addEventListener("click", (e) => {
+  if (e.target === $("delModal")) $("delCancelBtn").click();
+});
+
+// Close on Escape
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("delModal").classList.contains("hidden")) $("delCancelBtn").click();
+});
+
+$("delConfirmBtn").onclick = async () => {
+  if (!_pendingDeleteId) return;
+  const vid  = _pendingDeleteId;
+  const name = _pendingDeleteName || vid;
+  $("delModal").classList.add("hidden");
+  _pendingDeleteId = _pendingDeleteName = null;
+
+  // Optimistic UI: remove from cache + sidebar immediately
+  videosCache = videosCache.filter(v => v.video_id !== vid);
+  renderSidebar();
+  if (selectedVidId === vid) {
+    selectedVidId = null;
+    $("playerWrap").classList.add("hidden");
+    $("videoPlayer").src = "";
+  }
+  // Close any active SSE stream for this video
+  if (_streams[vid]) { try { _streams[vid].close(); } catch {} delete _streams[vid]; }
+
+  try {
+    await api(`/videos/${encodeURIComponent(vid)}`, { method: "DELETE" });
+    toast(`"${name.length > 40 ? name.slice(0,37)+"…" : name}" deleted`);
+  } catch (e) {
+    if (e.status === 401) { onAuthExpired(); return; }
+    toast("Delete failed: " + escapeHtml(e.message), true);
+    // Re-fetch so the sidebar reflects reality
+    loadVideos();
+  }
+};
 
 function handleSvClick(ev, videoId, fileUrl) {
   if (ev.target.type === "checkbox") return;
