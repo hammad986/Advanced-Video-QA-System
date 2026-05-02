@@ -1,13 +1,20 @@
-"""Lightweight SQLite store for users, sessions, and video registry.
+"""DB layer — dual SQLite / PostgreSQL backend.
 
-Uses the stdlib `sqlite3` driver — no SQLAlchemy needed for this surface area.
-The DB file lives at `data/saas.db`. All write paths use `with _conn() as c:`
-so commits/rollbacks are automatic.
+When DATABASE_URL is present in the environment, PostgreSQL is used.
+Otherwise the system falls back to SQLite at data/saas.db.
+
+Design
+------
+* _Row     — dict subclass that also supports integer positional access
+             so that `row[0]` works for COUNT(*) results.
+* _Cur     — thin cursor wrapper with .fetchone() / .fetchall().
+* _Conn    — unified connection wrapper with .execute() / .executescript().
+* _conn()  — context manager that yields a _Conn, commits on exit,
+             rolls back on exception.
 """
 
 from __future__ import annotations
 
-import hashlib
 import os
 import sqlite3
 import time
@@ -17,34 +24,156 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 DB_PATH = Path(os.environ.get("VIDEO_QA_SAAS_DB", "data/saas.db"))
+_DATABASE_URL = os.environ.get("DATABASE_URL")
+_USE_PG = bool(_DATABASE_URL)
 
 
-def _ensure_dirs() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+# ── Unified row / cursor helpers ───────────────────────────────────────
+
+class _Row(dict):
+    """Dict row that also supports positional integer access (COUNT(*) etc.)."""
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return list(self.values())[key]
+        return super().__getitem__(key)
+
+
+class _Cur:
+    def __init__(self, cursor):
+        self._c = cursor
+
+    def fetchone(self) -> Optional[_Row]:
+        row = self._c.fetchone()
+        return _Row(dict(row)) if row is not None else None
+
+    def fetchall(self) -> List[_Row]:
+        return [_Row(dict(r)) for r in (self._c.fetchall() or [])]
+
+
+class _Conn:
+    def __init__(self, raw, is_pg: bool):
+        self._raw = raw
+        self._is_pg = is_pg
+
+    def execute(self, sql: str, params=()) -> _Cur:
+        if self._is_pg:
+            import psycopg2.extras
+            cur = self._raw.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql.replace("?", "%s"), params)
+            return _Cur(cur)
+        else:
+            return _Cur(self._raw.execute(sql, params))
+
+    def executescript(self, sql: str) -> None:
+        """Run a multi-statement DDL script (no parameter binding)."""
+        if self._is_pg:
+            cur = self._raw.cursor()
+            for stmt in sql.strip().split(";"):
+                s = stmt.strip()
+                if s:
+                    cur.execute(s)
+        else:
+            self._raw.executescript(sql)
+
+    def commit(self):
+        self._raw.commit()
+
+    def rollback(self):
+        self._raw.rollback()
+
+    def close(self):
+        self._raw.close()
 
 
 @contextmanager
 def _conn():
-    _ensure_dirs()
-    c = sqlite3.connect(str(DB_PATH))
-    c.row_factory = sqlite3.Row
-    try:
-        yield c
-        c.commit()
-    finally:
-        c.close()
+    if _USE_PG:
+        import psycopg2
+        raw = psycopg2.connect(_DATABASE_URL)
+        c = _Conn(raw, is_pg=True)
+        try:
+            yield c
+            raw.commit()
+        except Exception:
+            raw.rollback()
+            raise
+        finally:
+            raw.close()
+    else:
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        raw = sqlite3.connect(str(DB_PATH))
+        raw.row_factory = sqlite3.Row
+        c = _Conn(raw, is_pg=False)
+        try:
+            yield c
+            raw.commit()
+        finally:
+            raw.close()
 
+
+# ── Schema init ────────────────────────────────────────────────────────
 
 def init_db() -> None:
-    """Create tables and add new columns if they do not exist. Safe to call on every boot."""
+    """Create / migrate tables. Safe to call on every boot."""
+    if _USE_PG:
+        _init_pg()
+    else:
+        _init_sqlite()
+
+
+def _init_pg() -> None:
     with _conn() as c:
-        c.executescript(
-            """
+        c.executescript("""
             CREATE TABLE IF NOT EXISTS users (
-                id                       TEXT PRIMARY KEY,
-                email                    TEXT UNIQUE NOT NULL,
-                password_hash            TEXT NOT NULL,
-                created_at               REAL NOT NULL
+                id                        TEXT PRIMARY KEY,
+                email                     TEXT UNIQUE NOT NULL,
+                password_hash             TEXT,
+                created_at                DOUBLE PRECISION NOT NULL,
+                otp_hash                  TEXT,
+                otp_expiry                DOUBLE PRECISION,
+                otp_attempts              INTEGER DEFAULT 0,
+                otp_verified              INTEGER DEFAULT 0,
+                tokens_invalidated_before DOUBLE PRECISION DEFAULT 0,
+                email_verified            INTEGER DEFAULT 1,
+                email_ver_hash            TEXT,
+                email_ver_expiry          DOUBLE PRECISION,
+                google_id                 TEXT UNIQUE,
+                auth_provider             TEXT DEFAULT 'local'
+            );
+
+            CREATE TABLE IF NOT EXISTS videos (
+                video_id    TEXT PRIMARY KEY,
+                user_id     TEXT NOT NULL REFERENCES users(id),
+                filename    TEXT NOT NULL,
+                status      TEXT NOT NULL,
+                error       TEXT,
+                created_at  DOUBLE PRECISION NOT NULL,
+                updated_at  DOUBLE PRECISION NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_videos_user ON videos(user_id);
+
+            CREATE TABLE IF NOT EXISTS rate_limit_events (
+                id   BIGSERIAL PRIMARY KEY,
+                key  TEXT NOT NULL,
+                ts   DOUBLE PRECISION NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_rle_key_ts ON rate_limit_events(key, ts)
+        """)
+    # Idempotent column additions for any future migrations
+    _add_column_if_missing("users", "google_id",    "TEXT UNIQUE")
+    _add_column_if_missing("users", "auth_provider", "TEXT DEFAULT 'local'")
+
+
+def _init_sqlite() -> None:
+    with _conn() as c:
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id            TEXT PRIMARY KEY,
+                email         TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at    REAL NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS videos (
@@ -61,52 +190,76 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_videos_user ON videos(user_id);
 
             CREATE TABLE IF NOT EXISTS rate_limit_events (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                key        TEXT NOT NULL,
-                ts         REAL NOT NULL
+                id  INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL,
+                ts  REAL NOT NULL
             );
 
-            CREATE INDEX IF NOT EXISTS idx_rle_key_ts ON rate_limit_events(key, ts);
-            """
+            CREATE INDEX IF NOT EXISTS idx_rle_key_ts ON rate_limit_events(key, ts)
+        """)
+    for col, col_def in [
+        ("otp_hash",                  "TEXT"),
+        ("otp_expiry",                "REAL"),
+        ("otp_attempts",              "INTEGER DEFAULT 0"),
+        ("otp_verified",              "INTEGER DEFAULT 0"),
+        ("tokens_invalidated_before", "REAL DEFAULT 0"),
+        ("email_verified",            "INTEGER DEFAULT 1"),
+        ("email_ver_hash",            "TEXT"),
+        ("email_ver_expiry",          "REAL"),
+        ("google_id",                 "TEXT"),
+        ("auth_provider",             "TEXT DEFAULT 'local'"),
+    ]:
+        _add_column_if_missing("users", col, col_def)
+    # Unique index for google_id on SQLite (ALTER TABLE can't add UNIQUE)
+    with _conn() as c:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id "
+            "ON users(google_id) WHERE google_id IS NOT NULL"
         )
-
-    # Safe ALTER TABLE migrations — add columns only if missing.
-    # email_verified defaults to 1 so all pre-existing accounts are treated as verified.
-    # New registrations explicitly INSERT email_verified=0 and go through the flow.
-    _add_column_if_missing("users", "otp_hash",                  "TEXT")
-    _add_column_if_missing("users", "otp_expiry",                "REAL")
-    _add_column_if_missing("users", "otp_attempts",              "INTEGER DEFAULT 0")
-    _add_column_if_missing("users", "otp_verified",              "INTEGER DEFAULT 0")
-    _add_column_if_missing("users", "tokens_invalidated_before", "REAL DEFAULT 0")
-    _add_column_if_missing("users", "email_verified",            "INTEGER DEFAULT 1")
-    _add_column_if_missing("users", "email_ver_hash",            "TEXT")
-    _add_column_if_missing("users", "email_ver_expiry",          "REAL")
 
 
 def _add_column_if_missing(table: str, column: str, col_def: str) -> None:
-    """ALTER TABLE … ADD COLUMN only when the column doesn't exist yet."""
-    with _conn() as c:
-        existing = {
-            row[1]
-            for row in c.execute(f"PRAGMA table_info({table})").fetchall()
-        }
-        if column not in existing:
-            c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+    if _USE_PG:
+        pg_def = col_def.replace("REAL", "DOUBLE PRECISION")
+        with _conn() as c:
+            c.execute(
+                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {pg_def}"
+            )
+    else:
+        with _conn() as c:
+            existing = {
+                row["name"]
+                for row in c.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            if column not in existing:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
 
 
 # ── Users ──────────────────────────────────────────────────────────────
 
-def create_user(email: str, password_hash: str) -> Dict[str, Any]:
+def create_user(
+    email: str,
+    password_hash: str,
+    auth_provider: str = "local",
+    google_id: Optional[str] = None,
+) -> Dict[str, Any]:
     user_id = uuid.uuid4().hex
     now = time.time()
+    # email_verified=1 for OAuth (Google verified it), 0 for local
+    email_verified = 1 if auth_provider != "local" else 0
     with _conn() as c:
         c.execute(
             """INSERT INTO users
-               (id, email, password_hash, created_at, email_verified)
-               VALUES (?, ?, ?, ?, 0)""",
-            (user_id, email.lower(), password_hash, now),
+               (id, email, password_hash, created_at, email_verified, auth_provider, google_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (user_id, email.lower(), password_hash, now,
+             email_verified, auth_provider, google_id),
         )
-    return {"id": user_id, "email": email.lower(), "created_at": now, "email_verified": 0}
+    return {
+        "id": user_id, "email": email.lower(), "created_at": now,
+        "email_verified": email_verified, "auth_provider": auth_provider,
+        "google_id": google_id,
+    }
 
 
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
@@ -115,7 +268,8 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
             """SELECT id, email, password_hash, created_at,
                       otp_hash, otp_expiry, otp_attempts, otp_verified,
                       tokens_invalidated_before,
-                      email_verified, email_ver_hash, email_ver_expiry
+                      email_verified, email_ver_hash, email_ver_expiry,
+                      google_id, auth_provider
                FROM users WHERE email = ?""",
             (email.lower(),),
         ).fetchone()
@@ -125,11 +279,32 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
 def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     with _conn() as c:
         row = c.execute(
-            """SELECT id, email, created_at, tokens_invalidated_before, email_verified
+            """SELECT id, email, created_at, tokens_invalidated_before,
+                      email_verified, auth_provider
                FROM users WHERE id = ?""",
             (user_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def get_user_by_google_id(google_id: str) -> Optional[Dict[str, Any]]:
+    with _conn() as c:
+        row = c.execute(
+            """SELECT id, email, password_hash, created_at,
+                      tokens_invalidated_before, email_verified, auth_provider, google_id
+               FROM users WHERE google_id = ?""",
+            (google_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def link_google_account(user_id: str, google_id: str) -> None:
+    """Attach a Google ID to an existing local account and mark it verified."""
+    with _conn() as c:
+        c.execute(
+            "UPDATE users SET google_id = ?, email_verified = 1 WHERE id = ?",
+            (google_id, user_id),
+        )
 
 
 def update_password(user_id: str, password_hash: str) -> None:
@@ -182,18 +357,19 @@ def get_otp_data(user_id: str) -> Optional[Dict[str, Any]]:
 
 
 def increment_otp_attempts(user_id: str) -> int:
-    """Increment and return the new attempts count."""
     with _conn() as c:
         c.execute(
             "UPDATE users SET otp_attempts = COALESCE(otp_attempts, 0) + 1 WHERE id = ?",
             (user_id,),
         )
-        row = c.execute("SELECT otp_attempts FROM users WHERE id = ?", (user_id,)).fetchone()
+        row = c.execute(
+            "SELECT otp_attempts FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
     return row["otp_attempts"] if row else 0
 
 
 def mark_otp_verified(user_id: str) -> None:
-    """Mark the OTP as verified AND consume the hash so it cannot be reused."""
+    """Mark OTP verified AND consume the hash so it cannot be reused."""
     with _conn() as c:
         c.execute(
             "UPDATE users SET otp_verified = 1, otp_hash = NULL WHERE id = ?",
@@ -212,7 +388,6 @@ def clear_otp(user_id: str) -> None:
 
 
 def invalidate_user_tokens(user_id: str) -> None:
-    """Mark all tokens issued before now as invalid."""
     with _conn() as c:
         c.execute(
             "UPDATE users SET tokens_invalidated_before = ? WHERE id = ?",
@@ -220,17 +395,16 @@ def invalidate_user_tokens(user_id: str) -> None:
         )
 
 
-# ── Rate Limiting (sliding window) ────────────────────────────────────
+# ── Rate Limiting ──────────────────────────────────────────────────────
 
 def check_rate_limit(key: str, max_count: int, window_seconds: float) -> bool:
-    """Return True if the action is ALLOWED (count < max_count within window)."""
     cutoff = time.time() - window_seconds
     with _conn() as c:
-        count = c.execute(
-            "SELECT COUNT(*) FROM rate_limit_events WHERE key = ? AND ts > ?",
+        row = c.execute(
+            "SELECT COUNT(*) AS cnt FROM rate_limit_events WHERE key = ? AND ts > ?",
             (key, cutoff),
-        ).fetchone()[0]
-    return count < max_count
+        ).fetchone()
+    return (row["cnt"] if row else 0) < max_count
 
 
 def record_rate_event(key: str) -> None:
@@ -243,7 +417,6 @@ def record_rate_event(key: str) -> None:
 
 
 def _prune_old_rate_events() -> None:
-    """Remove events older than 24 hours to keep the table small."""
     cutoff = time.time() - 86400
     with _conn() as c:
         c.execute("DELETE FROM rate_limit_events WHERE ts < ?", (cutoff,))
@@ -251,17 +424,22 @@ def _prune_old_rate_events() -> None:
 
 # ── Videos ─────────────────────────────────────────────────────────────
 
-def register_video(video_id: str, user_id: str, filename: str, status: str = "uploaded") -> None:
+def register_video(
+    video_id: str, user_id: str, filename: str, status: str = "uploaded"
+) -> None:
     now = time.time()
     with _conn() as c:
         c.execute(
-            """INSERT INTO videos (video_id, user_id, filename, status, error, created_at, updated_at)
+            """INSERT INTO videos
+               (video_id, user_id, filename, status, error, created_at, updated_at)
                VALUES (?, ?, ?, ?, NULL, ?, ?)""",
             (video_id, user_id, filename, status, now, now),
         )
 
 
-def update_video_status(video_id: str, status: str, error: Optional[str] = None) -> None:
+def update_video_status(
+    video_id: str, status: str, error: Optional[str] = None
+) -> None:
     with _conn() as c:
         c.execute(
             "UPDATE videos SET status = ?, error = ?, updated_at = ? WHERE video_id = ?",

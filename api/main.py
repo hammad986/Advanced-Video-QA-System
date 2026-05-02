@@ -2,28 +2,31 @@
 
 Endpoints
 ---------
-  POST /auth/register           create account (password policy enforced)
-  POST /auth/login              obtain bearer token (rate-limited)
-  GET  /auth/me                 current user (auth required)
-  POST /auth/verify_email       verify email address with 6-digit code
-  POST /auth/resend_verification resend email verification code (rate-limited)
-  POST /auth/request_reset      request OTP for password reset (rate-limited)
-  POST /auth/verify_otp         verify OTP — consumes the code (max 5 attempts)
-  POST /auth/reset_password     reset password after OTP verification (no OTP re-entry)
-  POST /upload_video            multipart upload (auth required)
-  POST /process_video           transcribe + index an uploaded video (auth)
-  POST /process_url             download + index a YouTube video (auth, rate-limited)
-  POST /ask_question            ask a question (auth)
-  GET  /videos                  list current user's videos (auth)
-  GET  /health                  public health probe
-  GET  /docs                    Swagger UI
+Auth
+  POST /auth/register              create account (password policy enforced)
+  POST /auth/login                 obtain bearer token (blocked if unverified)
+  GET  /auth/me                    current user (auth required)
+  POST /auth/verify_email          verify email address with 6-digit code
+  POST /auth/resend_verification   resend verification code (rate-limited)
+  POST /auth/change_password       change password (auth required)
+  POST /auth/request_reset         OTP password reset, step 1
+  POST /auth/verify_otp            OTP password reset, step 2 (consumes code)
+  POST /auth/reset_password        OTP password reset, step 3
+  GET  /auth/google                redirect to Google OAuth consent screen
+  GET  /auth/google/callback       handle Google OAuth callback
 
-Per-user data isolation
------------------------
-Each upload gets a namespaced video_id of the form `{user_id}__{slug}`. The
-existing pipeline already filters retrieval by `video_id`. For unscoped
-questions we filter retrieval by **all** of the caller's video_ids (server-side)
-so a user can never see another user's chunks.
+Videos
+  POST /upload_video               multipart upload (auth)
+  POST /process_video              transcribe + index an uploaded video (auth)
+  POST /process_url                download + index a YouTube video (auth, rate-limited)
+  GET  /videos                     list current user's videos (auth)
+
+Q&A
+  POST /ask_question               ask a question (auth)
+
+System
+  GET  /health                     public health probe
+  GET  /docs                       Swagger UI
 """
 
 from __future__ import annotations
@@ -50,13 +53,13 @@ from fastapi import (
     Depends,
     FastAPI,
     File,
-    Form,
     HTTPException,
     Request,
     UploadFile,
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
@@ -65,6 +68,8 @@ from .compare import router as compare_router
 from .schemas import (
     AskIn,
     AskOut,
+    ChangePasswordIn,
+    ChangePasswordOut,
     HealthOut,
     LoginIn,
     ProcessIn,
@@ -89,32 +94,40 @@ from .schemas import (
 )
 
 logger = logging.getLogger("video_qa.api")
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+)
 
 # ── Constants ──────────────────────────────────────────────────────────
-MAX_UPLOAD_MB = int(os.environ.get("VIDEO_QA_MAX_UPLOAD_MB", "300"))
-MAX_URL_MB = 200
+MAX_UPLOAD_MB            = int(os.environ.get("VIDEO_QA_MAX_UPLOAD_MB", "300"))
+MAX_URL_MB               = 200
 MAX_URL_DURATION_MINUTES = 30
 ALLOWED_EXTS = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".mp3", ".wav", ".m4a", ".mpeg4"}
 USER_UPLOAD_ROOT = Path("data/users")
 
-# Allowed YouTube domains for URL processing
 _ALLOWED_URL_DOMAINS = {"youtube.com", "www.youtube.com", "youtu.be", "m.youtube.com"}
 
 # Rate limit windows
-_RATE_LOGIN_MAX        = 10   # per IP per 15 min
-_RATE_LOGIN_WIN        = 900
-_RATE_REGISTER_MAX     = 5    # per IP per hour
-_RATE_REGISTER_WIN     = 3600
-_RATE_OTP_MAX          = 3    # per user per hour
-_RATE_OTP_WIN          = 3600
-_RATE_URL_MAX          = 3    # per user per hour
-_RATE_URL_WIN          = 3600
-_RATE_EMAIL_VER_MAX    = 5    # resend verification per IP per hour
-_RATE_EMAIL_VER_WIN    = 3600
+_RATE_LOGIN_MAX         = 10   # per IP per 15 min
+_RATE_LOGIN_WIN         = 900
+_RATE_REGISTER_MAX      = 5    # per IP per hour
+_RATE_REGISTER_WIN      = 3600
+_RATE_OTP_MAX           = 3    # per user per hour
+_RATE_OTP_WIN           = 3600
+_RATE_URL_MAX           = 3    # per user per hour
+_RATE_URL_WIN           = 3600
+_RATE_EMAIL_VER_MAX     = 5    # resend verification per IP per hour
+_RATE_EMAIL_VER_WIN     = 3600
 
-# Email verification code TTL
 _EMAIL_VER_TTL = 60 * 60 * 24  # 24 hours
+
+# Compute the Google OAuth redirect URI
+_REPLIT_DEV_DOMAIN = os.environ.get("REPLIT_DEV_DOMAIN", "")
+_GOOGLE_REDIRECT_URI = os.environ.get(
+    "GOOGLE_REDIRECT_URI",
+    f"https://{_REPLIT_DEV_DOMAIN}/auth/google/callback" if _REPLIT_DEV_DOMAIN else "",
+)
 
 # ── App ────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -149,7 +162,7 @@ def get_pipeline():
         with _pipeline_lock:
             if _pipeline is None:
                 from video_qa.pipeline import VideoQAPipeline
-                logger.info("[boot] initializing VideoQAPipeline (cold start)…")
+                logger.info("[boot] initializing VideoQAPipeline…")
                 _pipeline = VideoQAPipeline()
                 logger.info("[boot] pipeline ready")
     return _pipeline
@@ -175,7 +188,9 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _enforce_rate_limit(key: str, max_count: int, window_seconds: float, label: str) -> None:
+def _enforce_rate_limit(
+    key: str, max_count: int, window_seconds: float, label: str
+) -> None:
     if not db.check_rate_limit(key, max_count, window_seconds):
         raise HTTPException(
             status.HTTP_429_TOO_MANY_REQUESTS,
@@ -189,10 +204,14 @@ def _enforce_rate_limit(key: str, max_count: int, window_seconds: float, label: 
 def _startup() -> None:
     db.init_db()
     USER_UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
-    logger.info("[boot] DB initialized at %s", db.DB_PATH)
+    backend = "postgresql" if db._USE_PG else "sqlite"
+    logger.info("[boot] DB backend=%s path=%s", backend, db.DB_PATH if not db._USE_PG else "DATABASE_URL")
+    if auth.google_oauth_configured():
+        logger.info("[boot] Google OAuth configured — redirect URI: %s", _GOOGLE_REDIRECT_URI)
+    else:
+        logger.warning("[boot] Google OAuth NOT configured (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET missing)")
 
 
-# Multi-Video Compare module
 app.include_router(compare_router)
 
 _static_dir = Path(__file__).parent / "static"
@@ -214,11 +233,17 @@ def health() -> HealthOut:
     n_users = n_videos = 0
     try:
         with db._conn() as c:
-            n_users = c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-            n_videos = c.execute("SELECT COUNT(*) FROM videos").fetchone()[0]
+            n_users  = c.execute("SELECT COUNT(*) AS cnt FROM users").fetchone()["cnt"]
+            n_videos = c.execute("SELECT COUNT(*) AS cnt FROM videos").fetchone()["cnt"]
     except Exception as e:
         logger.warning("[health] db introspection failed: %s", e)
-    return HealthOut(status="ok", indexed_chunks=chunks, db_users=n_users, db_videos=n_videos)
+    return HealthOut(
+        status="ok",
+        indexed_chunks=chunks,
+        db_users=n_users,
+        db_videos=n_videos,
+        db_backend="postgresql" if db._USE_PG else "sqlite",
+    )
 
 
 # ── Auth routes ────────────────────────────────────────────────────────
@@ -236,21 +261,19 @@ def register(payload: RegisterIn, request: Request) -> TokenOut:
 
     user = db.create_user(payload.email, auth.hash_password(payload.password))
 
-    # Generate a 6-digit email verification code and store it
-    ver_code = auth.generate_otp()
-    ver_hash = auth.hash_otp(ver_code)
+    # Generate email verification code (24h TTL), log it server-side
+    ver_code   = auth.generate_otp()
+    ver_hash   = auth.hash_otp(ver_code)
     ver_expiry = time.time() + _EMAIL_VER_TTL
     db.set_email_verification(user["id"], ver_hash, ver_expiry)
 
-    # In production wire this to an email service; for now log it server-side.
     logger.info(
-        "[email_verify] Verification code generated for user=%s email=%s (dev mode — not emailed)",
+        "[email_verify] Code generated for user=%s email=%s (dev mode — not emailed)",
         user["id"], payload.email,
     )
-    logger.info("[email_verify] CODE=%s  ← use POST /auth/verify_email to confirm", ver_code)
+    logger.info("[email_verify] CODE=%s  ← POST /auth/verify_email to confirm", ver_code)
 
-    tok = auth.issue_token(user["id"])
-    return TokenOut(**tok)
+    return TokenOut(**auth.issue_token(user["id"]))
 
 
 @app.post("/auth/login", response_model=TokenOut, tags=["auth"])
@@ -265,12 +288,10 @@ def login(payload: LoginIn, request: Request) -> TokenOut:
     if not user.get("email_verified"):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Email address not verified. "
-            "Check your server logs for the verification code and POST to /auth/verify_email.",
+            "Email not verified. Check server logs for code → POST /auth/verify_email.",
         )
 
-    tok = auth.issue_token(user["id"])
-    return TokenOut(**tok)
+    return TokenOut(**auth.issue_token(user["id"]))
 
 
 @app.get("/auth/me", response_model=UserOut, tags=["auth"])
@@ -280,6 +301,7 @@ def me(user: Dict[str, Any] = Depends(current_user)) -> UserOut:
         email=user["email"],
         created_at=user["created_at"],
         email_verified=bool(user.get("email_verified", True)),
+        auth_provider=user.get("auth_provider") or "local",
     )
 
 
@@ -293,7 +315,7 @@ def verify_email(payload: VerifyEmailIn) -> VerifyEmailOut:
     if user.get("email_verified"):
         return VerifyEmailOut(message="Email is already verified.", verified=True)
 
-    ver_hash = user.get("email_ver_hash")
+    ver_hash   = user.get("email_ver_hash")
     ver_expiry = user.get("email_ver_expiry") or 0
 
     if not ver_hash:
@@ -315,33 +337,69 @@ def verify_email(payload: VerifyEmailIn) -> VerifyEmailOut:
 
 
 @app.post("/auth/resend_verification", response_model=ResendVerificationOut, tags=["auth"])
-def resend_verification(payload: ResendVerificationIn, request: Request) -> ResendVerificationOut:
+def resend_verification(
+    payload: ResendVerificationIn, request: Request
+) -> ResendVerificationOut:
     ip = _client_ip(request)
     _enforce_rate_limit(
         f"email_ver:{ip}", _RATE_EMAIL_VER_MAX, _RATE_EMAIL_VER_WIN, "verification resend"
     )
-
     _GENERIC = "If the account exists and is unverified, a new code has been sent."
 
     user = db.get_user_by_email(payload.email)
     if not user:
         return ResendVerificationOut(message=_GENERIC)
-
     if user.get("email_verified"):
         return ResendVerificationOut(message="Email is already verified.")
 
-    ver_code = auth.generate_otp()
-    ver_hash = auth.hash_otp(ver_code)
+    ver_code   = auth.generate_otp()
+    ver_hash   = auth.hash_otp(ver_code)
     ver_expiry = time.time() + _EMAIL_VER_TTL
     db.set_email_verification(user["id"], ver_hash, ver_expiry)
 
-    logger.info(
-        "[email_verify] Resent verification code for user=%s (dev mode — not emailed)",
-        user["id"],
-    )
-    logger.info("[email_verify] CODE=%s  ← use POST /auth/verify_email to confirm", ver_code)
-
+    logger.info("[email_verify] Resent code for user=%s (dev mode)", user["id"])
+    logger.info("[email_verify] CODE=%s  ← POST /auth/verify_email", ver_code)
     return ResendVerificationOut(message=_GENERIC)
+
+
+# ── Change Password ────────────────────────────────────────────────────
+@app.post("/auth/change_password", response_model=ChangePasswordOut, tags=["auth"])
+def change_password(
+    payload: ChangePasswordIn,
+    user: Dict[str, Any] = Depends(current_user),
+) -> ChangePasswordOut:
+    # OAuth-only accounts have no local password
+    full_user = db.get_user_by_email(user["email"])
+    if not full_user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found.")
+
+    provider = full_user.get("auth_provider") or "local"
+    if provider != "local":
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"This account uses {provider} sign-in and has no local password to change.",
+        )
+
+    if not auth.verify_password(payload.old_password, full_user.get("password_hash")):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Current password is incorrect.")
+
+    if payload.old_password == payload.new_password:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "New password must differ from the current password.",
+        )
+
+    ok, err = auth.validate_password_strength(payload.new_password)
+    if not ok:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, err)
+
+    db.update_password(full_user["id"], auth.hash_password(payload.new_password))
+    db.invalidate_user_tokens(full_user["id"])
+
+    logger.info("[auth] Password changed for user=%s; all sessions invalidated.", full_user["id"])
+    return ChangePasswordOut(
+        message="Password updated. Please sign in again with your new password."
+    )
 
 
 # ── OTP / Password Reset ────────────────────────────────────────────────
@@ -349,26 +407,22 @@ def resend_verification(payload: ResendVerificationIn, request: Request) -> Rese
 def request_reset(payload: RequestResetIn, request: Request) -> RequestResetOut:
     ip = _client_ip(request)
     _enforce_rate_limit(f"otp_req:{ip}", _RATE_OTP_MAX, _RATE_OTP_WIN, "OTP request")
-
-    # Always return generic message — never reveal whether the email exists
     _GENERIC = "If the account exists, an OTP has been sent."
 
     user = db.get_user_by_email(payload.email)
     if not user:
         return RequestResetOut(message=_GENERIC)
 
-    # Per-user rate limit (in addition to per-IP)
-    _enforce_rate_limit(f"otp_req_user:{user['id']}", _RATE_OTP_MAX, _RATE_OTP_WIN, "OTP request")
+    _enforce_rate_limit(
+        f"otp_req_user:{user['id']}", _RATE_OTP_MAX, _RATE_OTP_WIN, "OTP request"
+    )
 
-    otp = auth.generate_otp()
-    otp_hash = auth.hash_otp(otp)
+    otp    = auth.generate_otp()
     expiry = time.time() + auth.OTP_TTL_SECONDS
-    db.set_otp(user["id"], otp_hash, expiry)
+    db.set_otp(user["id"], auth.hash_otp(otp), expiry)
 
-    # In production wire this to an email service; for now log it server-side.
-    logger.info("[otp] Generated OTP for user=%s (dev mode — not emailed)", user["id"])
-    logger.info("[otp] OTP=%s  ← use POST /auth/verify_otp to verify", otp)
-
+    logger.info("[otp] OTP generated for user=%s (dev mode)", user["id"])
+    logger.info("[otp] OTP=%s  ← POST /auth/verify_otp", otp)
     return RequestResetOut(message=_GENERIC)
 
 
@@ -386,8 +440,7 @@ def verify_otp(payload: VerifyOTPIn) -> VerifyOTPOut:
     if attempts >= auth.OTP_MAX_ATTEMPTS:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            f"OTP blocked after {auth.OTP_MAX_ATTEMPTS} failed attempts. "
-            "Request a new OTP.",
+            f"OTP blocked after {auth.OTP_MAX_ATTEMPTS} failed attempts. Request a new OTP.",
         )
 
     expiry = otp_data.get("otp_expiry") or 0
@@ -407,7 +460,7 @@ def verify_otp(payload: VerifyOTPIn) -> VerifyOTPOut:
             f"Incorrect OTP. {remaining} attempt(s) remaining.",
         )
 
-    # Consume the OTP hash so it cannot be reused
+    # Consume the hash on first successful verify (prevents reuse)
     db.mark_otp_verified(user["id"])
     return VerifyOTPOut(message="OTP verified. You may now reset your password.", verified=True)
 
@@ -425,13 +478,9 @@ def reset_password(payload: ResetPasswordIn) -> ResetPasswordOut:
             "OTP not verified. Complete /auth/verify_otp first.",
         )
 
-    # Check the OTP session hasn't expired since verification
     expiry = otp_data.get("otp_expiry") or 0
     if time.time() > expiry:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "OTP session expired. Start over.")
-
-    # Note: no OTP re-verification here. The hash was consumed by /auth/verify_otp
-    # to prevent reuse. Checking otp_verified=1 + expiry is the authoritative gate.
 
     ok, err = auth.validate_password_strength(payload.new_password)
     if not ok:
@@ -445,7 +494,101 @@ def reset_password(payload: ResetPasswordIn) -> ResetPasswordOut:
     return ResetPasswordOut(message="Password updated. Please log in with your new password.")
 
 
-# ── Helpers ────────────────────────────────────────────────────────────
+# ── Google OAuth ────────────────────────────────────────────────────────
+def _google_redirect_uri(request: Request) -> str:
+    """Compute the redirect URI from the configured env var or the request's base URL."""
+    if _GOOGLE_REDIRECT_URI:
+        return _GOOGLE_REDIRECT_URI
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/auth/google/callback"
+
+
+@app.get("/auth/google", tags=["auth"], include_in_schema=True)
+def google_login(request: Request):
+    """Redirect user to Google's OAuth2 consent screen."""
+    if not auth.google_oauth_configured():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Google OAuth is not configured. "
+            "Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Secrets.",
+        )
+    redirect_uri = _google_redirect_uri(request)
+    url = auth.build_google_auth_url(redirect_uri)
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/auth/google/callback", tags=["auth"], include_in_schema=True)
+async def google_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    """Handle the OAuth2 callback from Google."""
+    if not auth.google_oauth_configured():
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Google OAuth is not configured.",
+        )
+
+    if error:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"Google OAuth error: {error}",
+        )
+
+    if not code:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Missing authorization code.")
+
+    if not auth.consume_oauth_state(state):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Invalid or expired OAuth state. Please try signing in again.",
+        )
+
+    redirect_uri = _google_redirect_uri(request)
+    try:
+        google_user = await auth.exchange_google_code(code, redirect_uri)
+    except Exception as e:
+        logger.exception("[oauth] Google token exchange failed")
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            f"Failed to complete Google sign-in: {e}",
+        )
+
+    google_id = google_user.get("id") or google_user.get("sub")
+    email     = (google_user.get("email") or "").lower().strip()
+
+    if not google_id or not email:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Google did not return a valid user ID or email.",
+        )
+
+    # 1. Find by google_id (returning user)
+    user = db.get_user_by_google_id(google_id)
+
+    # 2. Find by email → link existing account
+    if not user:
+        user = db.get_user_by_email(email)
+        if user:
+            db.link_google_account(user["id"], google_id)
+            logger.info("[oauth] Linked Google account to existing user=%s", user["id"])
+
+    # 3. New user — create account (email pre-verified by Google)
+    if not user:
+        user = db.create_user(
+            email=email,
+            password_hash="oauth:google",
+            auth_provider="google",
+            google_id=google_id,
+        )
+        logger.info("[oauth] Created new Google user=%s email=%s", user["id"], email)
+
+    tok = auth.issue_token(user["id"])
+    token_str = tok["access_token"]
+
+    # Redirect to /ui with JWT in the fragment (never appears in server logs)
+    redirect_url = f"/ui#token={token_str}&type=bearer"
+    return RedirectResponse(redirect_url, status_code=302)
+
+
+# ── Upload helpers ─────────────────────────────────────────────────────
 _SLUG_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 
 
@@ -459,7 +602,9 @@ def _namespaced_video_id(user_id: str, original_filename: str) -> str:
     return f"{user_id}__{_slugify(original_filename)}-{uuid.uuid4().hex[:6]}"
 
 
-def _ensure_owner(video: Optional[Dict[str, Any]], user_id: str, video_id: str) -> Dict[str, Any]:
+def _ensure_owner(
+    video: Optional[Dict[str, Any]], user_id: str, video_id: str
+) -> Dict[str, Any]:
     if not video:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Video '{video_id}' not found")
     if video["user_id"] != user_id:
@@ -502,10 +647,14 @@ async def upload_video(
         target.unlink(missing_ok=True)
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, f"Upload failed: {e}")
 
-    db.register_video(video_id=video_id, user_id=user["id"],
-                      filename=file.filename or target.name, status="uploaded")
+    db.register_video(
+        video_id=video_id, user_id=user["id"],
+        filename=file.filename or target.name, status="uploaded",
+    )
     logger.info("[upload] user=%s video_id=%s bytes=%d", user["id"], video_id, written)
-    return UploadOut(video_id=video_id, filename=file.filename or target.name, status="uploaded")
+    return UploadOut(
+        video_id=video_id, filename=file.filename or target.name, status="uploaded"
+    )
 
 
 @app.post("/process_video", response_model=ProcessOut, tags=["videos"])
@@ -520,13 +669,12 @@ def process_video(
     if not matches:
         db.update_video_status(payload.video_id, "failed", "Source file missing on disk")
         raise HTTPException(status.HTTP_410_GONE, "Source file missing on disk")
-    src = matches[0]
 
     db.update_video_status(payload.video_id, "processing")
     pipe = get_pipeline()
     try:
         with _index_write_lock:
-            result_id = pipe.process_video(str(src))
+            result_id = pipe.process_video(str(matches[0]))
     except Exception as e:
         db.update_video_status(payload.video_id, "failed", str(e))
         logger.exception("[process_video] failed for %s", payload.video_id)
@@ -537,14 +685,15 @@ def process_video(
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Processing failed")
 
     db.update_video_status(payload.video_id, "ready")
-    return ProcessOut(video_id=payload.video_id, status="ready",
-                      detail=f"Indexed under id '{result_id}'")
+    return ProcessOut(
+        video_id=payload.video_id, status="ready",
+        detail=f"Indexed under id '{result_id}'",
+    )
 
 
 # ── URL Video Processing ───────────────────────────────────────────────
 
 def _validate_youtube_url(url: str) -> None:
-    """Raise HTTP 400 if the URL is not a supported YouTube URL."""
     try:
         parsed = urlparse(url)
         if not parsed.scheme or not parsed.netloc:
@@ -563,43 +712,28 @@ def _validate_youtube_url(url: str) -> None:
 
 
 def _download_youtube_audio(url: str, tmp_dir: str) -> str:
-    """
-    Download audio-only from a YouTube URL using yt-dlp.
-    Runs synchronously — caller must wrap in asyncio.to_thread().
-    Returns path to the downloaded audio file.
-    Raises RuntimeError on failure.
-    """
     try:
         import yt_dlp
     except ImportError:
-        raise RuntimeError("yt-dlp is not installed. Run: pip install yt-dlp")
+        raise RuntimeError("yt-dlp is not installed.")
 
-    max_bytes = MAX_URL_MB * 1024 * 1024
+    max_bytes   = MAX_URL_MB * 1024 * 1024
     max_seconds = MAX_URL_DURATION_MINUTES * 60
-
-    out_tmpl = str(Path(tmp_dir) / "%(id)s.%(ext)s")
 
     def _progress_hook(d: Dict[str, Any]) -> None:
         if d.get("status") == "downloading":
-            downloaded = d.get("downloaded_bytes") or 0
-            if downloaded > max_bytes:
-                raise yt_dlp.utils.DownloadError(
-                    f"File exceeds {MAX_URL_MB} MB size limit"
-                )
+            if (d.get("downloaded_bytes") or 0) > max_bytes:
+                raise yt_dlp.utils.DownloadError(f"File exceeds {MAX_URL_MB} MB size limit")
 
     ydl_opts = {
-        "outtmpl": out_tmpl,
-        "format": "bestaudio/best",
-        "quiet": True,
+        "outtmpl":    str(Path(tmp_dir) / "%(id)s.%(ext)s"),
+        "format":     "bestaudio/best",
+        "quiet":      True,
         "no_warnings": True,
         "noplaylist": True,
         "progress_hooks": [_progress_hook],
-        "match_filter": yt_dlp.utils.match_filter_func(
-            f"duration <= {max_seconds}"
-        ),
-        "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        },
+        "match_filter": yt_dlp.utils.match_filter_func(f"duration <= {max_seconds}"),
+        "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "wav",
@@ -612,7 +746,8 @@ def _download_youtube_audio(url: str, tmp_dir: str) -> str:
         duration = (info or {}).get("duration") or 0
         if duration > max_seconds:
             raise RuntimeError(
-                f"Video is {duration // 60:.0f} min — exceeds the {MAX_URL_DURATION_MINUTES} min limit."
+                f"Video is {duration // 60:.0f} min — exceeds the "
+                f"{MAX_URL_DURATION_MINUTES} min limit."
             )
         ydl.download([url])
 
@@ -632,32 +767,24 @@ async def process_url(
 ) -> ProcessURLOut:
     """Download a YouTube video and run the full RAG pipeline on it.
 
-    Security:
-    - Only youtube.com / youtu.be are accepted (HTTP 400 otherwise).
-    - Max duration: 30 minutes. Max file size: 200 MB.
-    - Rate limited to 3 requests per user per hour.
-
-    The yt-dlp download runs in a background thread so the FastAPI event loop
-    is never blocked.
+    Both the yt-dlp download and the pipeline run are offloaded to
+    background threads via asyncio.to_thread() so the FastAPI event
+    loop is never blocked.
     """
-    # 1. Validate URL domain
     _validate_youtube_url(payload.url)
-
-    # 2. Per-user rate limit
     _enforce_rate_limit(
         f"url_proc:{user['id']}", _RATE_URL_MAX, _RATE_URL_WIN, "URL processing"
     )
 
-    # 3. Build a namespaced video_id from the URL slug
     url_slug = re.sub(r"[^a-zA-Z0-9_-]", "-", payload.url.split("?v=")[-1])[:32] or "yt"
     video_id = _namespaced_video_id(user["id"], url_slug)
-    db.register_video(video_id=video_id, user_id=user["id"],
-                      filename=payload.url, status="processing")
+    db.register_video(
+        video_id=video_id, user_id=user["id"],
+        filename=payload.url, status="processing",
+    )
 
     tmp_dir = tempfile.mkdtemp(prefix="videoqa_url_")
-    audio_path: Optional[str] = None
     try:
-        # 4. Download audio in a background thread — NEVER block the event loop
         logger.info("[url] user=%s downloading %s", user["id"], payload.url)
         try:
             audio_path = await asyncio.to_thread(
@@ -669,21 +796,13 @@ async def process_url(
         except Exception as e:
             db.update_video_status(video_id, "failed", f"Download failed: {e}")
             logger.exception("[url] download failed for %s", payload.url)
-            raise HTTPException(
-                status.HTTP_502_BAD_GATEWAY,
-                f"Failed to download video: {e}",
-            )
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"Failed to download video: {e}")
 
-        # 5. Copy the audio into the user upload directory so the pipeline
-        #    produces a stable video_id (derived from the filename stem).
         user_dir = USER_UPLOAD_ROOT / user["id"] / "videos"
         user_dir.mkdir(parents=True, exist_ok=True)
-        ext = Path(audio_path).suffix
-        dest = user_dir / f"{video_id}{ext}"
+        dest = user_dir / f"{video_id}{Path(audio_path).suffix}"
         shutil.copy2(audio_path, str(dest))
 
-        # 6. Run the pipeline synchronously inside a thread to keep FastAPI
-        #    responsive. The index write lock prevents concurrent FAISS writes.
         pipe = get_pipeline()
 
         def _run_pipeline() -> Optional[str]:
@@ -696,8 +815,7 @@ async def process_url(
             db.update_video_status(video_id, "failed", str(e))
             logger.exception("[url] pipeline failed for video_id=%s", video_id)
             raise HTTPException(
-                status.HTTP_500_INTERNAL_SERVER_ERROR,
-                f"Processing failed: {e}",
+                status.HTTP_500_INTERNAL_SERVER_ERROR, f"Processing failed: {e}"
             )
 
         if not result_id:
@@ -707,20 +825,16 @@ async def process_url(
         db.update_video_status(video_id, "ready")
         logger.info("[url] user=%s video_id=%s indexed OK", user["id"], video_id)
         return ProcessURLOut(
-            video_id=video_id,
-            status="ready",
+            video_id=video_id, status="ready",
             detail=f"YouTube audio indexed under id '{result_id}'",
         )
-
     finally:
-        # 7. Always clean up the temp directory regardless of outcome
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @app.get("/videos", response_model=List[VideoOut], tags=["videos"])
 def list_videos(user: Dict[str, Any] = Depends(current_user)) -> List[VideoOut]:
-    rows = db.list_user_videos(user["id"])
-    return [VideoOut(**r) for r in rows]
+    return [VideoOut(**r) for r in db.list_user_videos(user["id"])]
 
 
 # ── Q&A ────────────────────────────────────────────────────────────────
@@ -747,13 +861,16 @@ def ask_question(
         scope = None
 
     pipe = get_pipeline()
-    t0 = time.time()
+    t0   = time.time()
+
     if scope is not None:
         result = pipe.ask(payload.query, active_video_id=scope, use_cache=payload.use_cache)
     else:
         best: Optional[Dict[str, Any]] = None
         for v in owned:
-            r = pipe.ask(payload.query, active_video_id=v["video_id"], use_cache=payload.use_cache)
+            r = pipe.ask(
+                payload.query, active_video_id=v["video_id"], use_cache=payload.use_cache
+            )
             if r.get("status") == "UNSUPPORTED":
                 continue
             score = (r.get("support") or {}).get("support_score", 0.0)
@@ -767,13 +884,17 @@ def ask_question(
             "timestamp": None,
             "chunk_ids": [],
             "provider": "oos_gate",
-            "support": {"status": "UNSUPPORTED", "semantic_similarity": 0.0,
-                        "keyword_overlap": 0.0, "support_score": 0.0},
+            "support": {
+                "status": "UNSUPPORTED",
+                "semantic_similarity": 0.0,
+                "keyword_overlap": 0.0,
+                "support_score": 0.0,
+            },
             "neighbors": [],
             "cached": False,
         }
-    latency_ms = int((time.time() - t0) * 1000)
 
+    latency_ms = int((time.time() - t0) * 1000)
     return AskOut(
         answer=result.get("answer", ""),
         confidence=int(result.get("confidence", 0) or 0),
@@ -802,4 +923,5 @@ def root() -> Dict[str, Any]:
         "docs": "/docs",
         "health": "/health",
         "ui": "/ui",
+        "google_oauth": auth.google_oauth_configured(),
     }

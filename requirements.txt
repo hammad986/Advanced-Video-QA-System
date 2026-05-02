@@ -7,6 +7,7 @@ email-validator
 pyyaml
 python-dotenv
 requests
+httpx
 joblib
 numpy
 pandas
@@ -16,3 +17,4 @@ google-generativeai
 langchain
 pydub
 yt-dlp
+psycopg2-binary

@@ -30,6 +30,27 @@ class UserOut(BaseModel):
     email: str
     created_at: float
     email_verified: bool
+    auth_provider: str = "local"
+
+
+# ── Email Verification ─────────────────────────────────────────────────
+
+class VerifyEmailIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
+
+
+class VerifyEmailOut(BaseModel):
+    message: str
+    verified: bool
+
+
+class ResendVerificationIn(BaseModel):
+    email: EmailStr
+
+
+class ResendVerificationOut(BaseModel):
+    message: str
 
 
 # ── OTP / Password Reset ───────────────────────────────────────────────
@@ -39,7 +60,7 @@ class RequestResetIn(BaseModel):
 
 
 class RequestResetOut(BaseModel):
-    message: str  # always generic: "If the account exists, OTP has been sent"
+    message: str
 
 
 class VerifyOTPIn(BaseModel):
@@ -61,23 +82,14 @@ class ResetPasswordOut(BaseModel):
     message: str
 
 
-# ── Email Verification ─────────────────────────────────────────────────
+# ── Change Password ────────────────────────────────────────────────────
 
-class VerifyEmailIn(BaseModel):
-    email: EmailStr
-    code: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
-
-
-class VerifyEmailOut(BaseModel):
-    message: str
-    verified: bool
+class ChangePasswordIn(BaseModel):
+    old_password: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
-class ResendVerificationIn(BaseModel):
-    email: EmailStr
-
-
-class ResendVerificationOut(BaseModel):
+class ChangePasswordOut(BaseModel):
     message: str
 
 
@@ -127,8 +139,7 @@ class AskIn(BaseModel):
     query: str = Field(min_length=1, max_length=2000)
     video_id: Optional[str] = Field(
         default=None,
-        description="Optional: scope the answer to a single uploaded video. "
-                    "If omitted, the answer is drawn from all of your videos.",
+        description="Scope answer to one video. Omit to search all your videos.",
     )
     use_cache: bool = True
 
@@ -165,3 +176,4 @@ class HealthOut(BaseModel):
     indexed_chunks: int
     db_users: int
     db_videos: int
+    db_backend: str = "sqlite"

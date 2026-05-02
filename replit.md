@@ -78,12 +78,15 @@ requirements.txt    # Python dependencies
 |--------|------|-------------|
 | POST | /auth/register | Create account (password policy enforced, rate-limited). Generates email verification code logged server-side. |
 | POST | /auth/login | Get JWT bearer token. Blocked with HTTP 403 if email not verified. |
-| GET | /auth/me | Current user info including `email_verified` (auth required) |
+| GET  | /auth/me | Current user info including `email_verified` and `auth_provider` (auth required) |
 | POST | /auth/verify_email | Verify email address with 6-digit code (24h TTL) |
 | POST | /auth/resend_verification | Resend email verification code (rate-limited 5/hr per IP) |
+| POST | /auth/change_password | Change password (JWT required). Blocked for OAuth accounts. Invalidates all existing sessions. |
 | POST | /auth/request_reset | Request OTP for password reset (rate-limited) |
 | POST | /auth/verify_otp | Verify 6-digit OTP — consumes the hash (max 5 attempts, then locked) |
 | POST | /auth/reset_password | Reset password after OTP verification. Only requires email + new_password (OTP already consumed by verify_otp). |
+| GET  | /auth/google | Redirect to Google OAuth consent screen. Returns 503 if GOOGLE_CLIENT_ID/SECRET not set. |
+| GET  | /auth/google/callback | Handles Google OAuth callback. Creates or links user, issues JWT, redirects to `/ui#token=<jwt>`. |
 
 ### Videos
 | Method | Path | Description |
