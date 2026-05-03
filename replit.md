@@ -45,6 +45,9 @@ api/
   pipeline_singleton.py  # Shared pipeline instance + index_write_lock
   static/
     index.html        # Static frontend (served at /ui) — sidebar + player + progress polling
+    admin.html        # Admin panel (served at /admin) — users, videos, system stats
+    privacy.html      # Privacy Policy page (/privacy)
+    terms.html        # Terms of Service page (/terms)
 
 workers/
   video_worker.py          # 6-stage job: queued→validating→normalizing→transcribing→indexing→ready

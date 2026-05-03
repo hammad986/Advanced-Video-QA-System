@@ -31,6 +31,7 @@ class UserOut(BaseModel):
     created_at: float
     email_verified: bool
     auth_provider: str = "local"
+    role: str = "user"
 
 
 # ── Email Verification ─────────────────────────────────────────────────
@@ -195,3 +196,41 @@ class HealthOut(BaseModel):
     db_users: int
     db_videos: int
     db_backend: str = "sqlite"
+
+
+# ── Admin ───────────────────────────────────────────────────────────────
+
+class AdminUserOut(BaseModel):
+    id: str
+    email: str
+    created_at: float
+    email_verified: bool
+    role: str
+    auth_provider: str
+    video_count: int = 0
+    ready_count: int = 0
+
+
+class AdminVideoOut(BaseModel):
+    video_id: str
+    filename: str
+    status: str
+    error: Optional[str] = None
+    created_at: float
+    updated_at: float
+    chunk_count: Optional[int] = None
+    owner_email: str
+    owner_id: str
+
+
+class AdminStatsOut(BaseModel):
+    total_users: int
+    admin_count: int
+    total_videos: int
+    ready_videos: int
+    failed_videos: int
+    total_chunks: int
+
+
+class SetRoleIn(BaseModel):
+    role: str = Field(pattern=r"^(user|admin)$")

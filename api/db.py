@@ -164,6 +164,7 @@ def _init_pg() -> None:
     _add_column_if_missing("users",  "email_ver_expiry",          "DOUBLE PRECISION")
     _add_column_if_missing("users",  "google_id",                 "TEXT")
     _add_column_if_missing("users",  "auth_provider",             "TEXT DEFAULT 'local'")
+    _add_column_if_missing("users",  "role",                      "TEXT DEFAULT 'user'")
     _add_column_if_missing("videos", "job_id",                    "TEXT")
     _add_column_if_missing("videos", "progress",                  "INTEGER DEFAULT 0")
     _add_column_if_missing("videos", "stage",                     "TEXT DEFAULT 'queued'")
@@ -230,6 +231,7 @@ def _init_sqlite() -> None:
         ("email_ver_expiry",          "REAL"),
         ("google_id",                 "TEXT"),
         ("auth_provider",             "TEXT DEFAULT 'local'"),
+        ("role",                      "TEXT DEFAULT 'user'"),
         ("job_id",                    "TEXT"),
         ("progress",                  "INTEGER DEFAULT 0"),
         ("stage",                     "TEXT DEFAULT 'queued'"),
@@ -307,7 +309,8 @@ def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
                       otp_hash, otp_expiry, otp_attempts, otp_verified,
                       tokens_invalidated_before,
                       email_verified, email_ver_hash, email_ver_expiry,
-                      google_id, auth_provider
+                      google_id, auth_provider,
+                      COALESCE(role, 'user') AS role
                FROM users WHERE email = ?""",
             (email.lower(),),
         ).fetchone()
@@ -318,11 +321,82 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
     with _conn() as c:
         row = c.execute(
             """SELECT id, email, created_at, tokens_invalidated_before,
-                      email_verified, auth_provider
+                      email_verified, auth_provider,
+                      COALESCE(role, 'user') AS role
                FROM users WHERE id = ?""",
             (user_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def set_user_role(user_id: str, role: str) -> None:
+    """Set the role for a user ('user' or 'admin')."""
+    if role not in ("user", "admin"):
+        raise ValueError(f"Invalid role: {role!r}")
+    with _conn() as c:
+        c.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+
+
+def promote_admin_email(email: str) -> bool:
+    """Promote a user to admin by email. Returns True if the user was found."""
+    with _conn() as c:
+        rows = c.execute("SELECT id FROM users WHERE email = ?", (email.lower(),)).fetchall()
+        if not rows:
+            return False
+        c.execute(
+            "UPDATE users SET role = 'admin' WHERE email = ?", (email.lower(),)
+        )
+    return True
+
+
+def list_all_users_admin() -> List[Dict[str, Any]]:
+    """Return all users with their video count (admin only)."""
+    with _conn() as c:
+        rows = c.execute(
+            """SELECT u.id, u.email, u.created_at, u.email_verified,
+                      COALESCE(u.role, 'user') AS role, u.auth_provider,
+                      COUNT(v.video_id) AS video_count,
+                      SUM(CASE WHEN v.status='ready' THEN 1 ELSE 0 END) AS ready_count
+               FROM users u
+               LEFT JOIN videos v ON v.user_id = u.id
+               GROUP BY u.id
+               ORDER BY u.created_at DESC"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def list_all_videos_admin() -> List[Dict[str, Any]]:
+    """Return all videos across all users with owner email (admin only)."""
+    with _conn() as c:
+        rows = c.execute(
+            """SELECT v.video_id, v.filename, v.status, v.error,
+                      v.created_at, v.updated_at, v.job_id,
+                      v.progress, v.stage, v.file_url, v.chunk_count,
+                      u.email AS owner_email, u.id AS owner_id
+               FROM videos v
+               JOIN users u ON u.id = v.user_id
+               ORDER BY v.created_at DESC"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_system_stats() -> Dict[str, Any]:
+    """Return aggregate system statistics (admin only)."""
+    with _conn() as c:
+        total_users  = (c.execute("SELECT COUNT(*) AS n FROM users").fetchone() or {}).get("n", 0)
+        total_videos = (c.execute("SELECT COUNT(*) AS n FROM videos").fetchone() or {}).get("n", 0)
+        ready_videos = (c.execute("SELECT COUNT(*) AS n FROM videos WHERE status='ready'").fetchone() or {}).get("n", 0)
+        failed_videos = (c.execute("SELECT COUNT(*) AS n FROM videos WHERE status='failed'").fetchone() or {}).get("n", 0)
+        total_chunks = (c.execute("SELECT COALESCE(SUM(chunk_count),0) AS n FROM videos WHERE status='ready'").fetchone() or {}).get("n", 0)
+        admin_count  = (c.execute("SELECT COUNT(*) AS n FROM users WHERE role='admin'").fetchone() or {}).get("n", 0)
+    return {
+        "total_users":   total_users,
+        "admin_count":   admin_count,
+        "total_videos":  total_videos,
+        "ready_videos":  ready_videos,
+        "failed_videos": failed_videos,
+        "total_chunks":  total_chunks,
+    }
 
 
 def get_user_by_google_id(google_id: str) -> Optional[Dict[str, Any]]:

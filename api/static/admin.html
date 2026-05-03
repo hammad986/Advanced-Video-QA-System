@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Video-QA Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ff6b6b'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"/>
+<style>
+  :root {
+    --bg:#0b0f14; --panel:#141b24; --panel2:#0d1218; --line:#22303f;
+    --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; --acc-dim:#2a4a78;
+    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80; --adm:#c084fc;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+            background:var(--bg);color:var(--fg);font-size:14px;line-height:1.45;}
+  body{display:flex;flex-direction:column;min-height:100vh;}
+
+  header{display:flex;align-items:center;gap:14px;padding:0 22px;height:52px;
+         border-bottom:1px solid var(--line);background:var(--bg);flex-shrink:0;}
+  header h1{font-size:15px;font-weight:700;letter-spacing:-.01em;}
+  .adm-badge{font-size:10px;padding:2px 7px;border-radius:9px;background:#3a1f5a;
+             color:var(--adm);font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+  .hdr-email{margin-left:auto;font-size:12px;color:var(--mut);}
+  .hdr-back{font-size:12px;color:var(--acc);text-decoration:none;padding:5px 10px;
+            border:1px solid var(--acc-dim);border-radius:6px;transition:background .15s;}
+  .hdr-back:hover{background:var(--acc-dim);}
+
+  main{flex:1;padding:22px 24px;max-width:1100px;width:100%;margin:0 auto;}
+
+  /* Stats cards */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:28px;}
+  .stat-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+             padding:16px 18px;}
+  .stat-card .lbl{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;
+                  font-weight:600;margin-bottom:6px;}
+  .stat-card .val{font-size:28px;font-weight:700;letter-spacing:-.02em;}
+  .stat-card .val.c-ok  {color:var(--ok);}
+  .stat-card .val.c-warn{color:var(--warn);}
+  .stat-card .val.c-err {color:var(--err);}
+  .stat-card .val.c-adm {color:var(--adm);}
+
+  /* Section headers */
+  .section{margin-bottom:28px;}
+  .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .sec-hdr h2{font-size:14px;font-weight:700;letter-spacing:.01em;}
+  .sec-hdr small{font-size:12px;color:var(--mut);}
+
+  /* Tables */
+  .tbl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:var(--panel2);font-size:11px;text-transform:uppercase;letter-spacing:.05em;
+     color:var(--mut);font-weight:700;padding:10px 14px;text-align:left;
+     border-bottom:1px solid var(--line);white-space:nowrap;}
+  td{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;
+     vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .td-email{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg);}
+  .td-id{font-family:ui-monospace,monospace;font-size:11px;color:var(--mut);
+         max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .td-file{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .td-num{text-align:right;font-variant-numeric:tabular-nums;}
+
+  /* Role badge */
+  .role{display:inline-block;font-size:10px;padding:2px 7px;border-radius:9px;
+        font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+  .role.admin{background:#3a1f5a;color:var(--adm);}
+  .role.user {background:#1a2230;color:var(--mut);}
+
+  /* Status badge */
+  .status{display:inline-block;font-size:10px;padding:2px 6px;border-radius:3px;
+          font-weight:700;letter-spacing:.03em;text-transform:uppercase;}
+  .status.ready      {background:#1a3826;color:var(--ok);}
+  .status.queued,
+  .status.processing {background:#3a2c14;color:var(--warn);}
+  .status.failed     {background:#3a1c1c;color:var(--err);}
+
+  /* Verified dot */
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .dot.yes{background:var(--ok);}
+  .dot.no {background:var(--err);}
+
+  /* Buttons */
+  button{font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;
+         border-radius:6px;border:1px solid transparent;padding:5px 12px;
+         transition:filter .15s,opacity .15s;}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  .btn-promote{background:#3a1f5a;color:var(--adm);border-color:#6b3fa0;}
+  .btn-promote:hover:not(:disabled){filter:brightness(1.2);}
+  .btn-demote {background:#1a2230;color:var(--mut);border-color:var(--line);}
+  .btn-demote:hover:not(:disabled){color:var(--fg);}
+  .btn-del    {background:transparent;color:var(--mut);border:none;padding:4px 8px;
+               font-size:16px;border-radius:4px;}
+  .btn-del:hover:not(:disabled){color:var(--err);background:#2a1010;}
+  .btn-refresh{background:transparent;border:1px solid var(--line);color:var(--mut);
+               font-size:13px;padding:5px 12px;border-radius:6px;}
+  .btn-refresh:hover{color:var(--fg);border-color:var(--mut);}
+
+  /* Misc */
+  .hidden{display:none!important;}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);
+        border-top-color:var(--acc);border-radius:50%;animation:sp .8s linear infinite;
+        vertical-align:-3px;margin-right:6px;}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err-msg{color:var(--err);font-size:13px;padding:12px;background:#2a1414;
+           border:1px solid #5e1a1a;border-radius:6px;margin:12px 0;}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+         background:var(--panel);border:1px solid var(--line);padding:10px 16px;
+         border-radius:8px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.4);
+         opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:1000;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+
+  /* Responsive */
+  @media(max-width:700px){
+    main{padding:14px 12px;}
+    .stats-grid{grid-template-columns:repeat(2,1fr);}
+    th:nth-child(n+4),td:nth-child(n+4){display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Video-QA</h1>
+  <span class="adm-badge">Admin</span>
+  <span id="hdrEmail" class="hdr-email"></span>
+  <a href="/ui/" class="hdr-back">← Back to App</a>
+</header>
+
+<main id="mainContent" class="hidden">
+
+  <!-- Stats -->
+  <div class="section">
+    <div class="sec-hdr">
+      <h2>System Overview</h2>
+      <button class="btn-refresh" onclick="loadAll()">↻ Refresh</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="lbl">Total Users</div><div class="val c-ok" id="st-users">—</div></div>
+      <div class="stat-card"><div class="lbl">Admins</div><div class="val c-adm" id="st-admins">—</div></div>
+      <div class="stat-card"><div class="lbl">Total Videos</div><div class="val" id="st-videos">—</div></div>
+      <div class="stat-card"><div class="lbl">Ready Videos</div><div class="val c-ok" id="st-ready">—</div></div>
+      <div class="stat-card"><div class="lbl">Failed Videos</div><div class="val c-err" id="st-failed">—</div></div>
+      <div class="stat-card"><div class="lbl">Total Chunks</div><div class="val c-warn" id="st-chunks">—</div></div>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="section">
+    <div class="sec-hdr">
+      <h2>Users <span id="usersCount" style="color:var(--mut);font-weight:400;font-size:12px;"></span></h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Verified</th>
+            <th>Provider</th>
+            <th>Videos</th>
+            <th>Ready</th>
+            <th>Joined</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Videos -->
+  <div class="section">
+    <div class="sec-hdr">
+      <h2>All Videos <span id="videosCount" style="color:var(--mut);font-weight:400;font-size:12px;"></span></h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Filename</th>
+            <th>Owner</th>
+            <th>Status</th>
+            <th>Chunks</th>
+            <th>Uploaded</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody id="videosBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div id="loadingMsg" style="text-align:center;padding:60px;color:var(--mut);">
+  <span class="spin"></span>Loading admin panel…
+</div>
+<div id="errorMsg" class="err-msg hidden" style="margin:24px;"></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Delete confirm modal -->
+<div id="delModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+     z-index:9999;align-items:center;justify-content:center;" role="dialog">
+  <div style="background:var(--panel);border:1px solid var(--line);border-radius:10px;
+              padding:24px 26px;max-width:360px;width:90%;">
+    <h3 style="margin:0 0 8px;font-size:15px;">Delete video?</h3>
+    <p style="font-size:13px;color:var(--mut);margin:0 0 6px;" id="delModalFile"></p>
+    <p style="font-size:12px;color:var(--mut);margin:0 0 20px;">Owner: <span id="delModalOwner"></span></p>
+    <div style="display:flex;gap:10px;">
+      <button id="delCancelBtn" style="flex:1;background:transparent;color:var(--mut);
+              border:1px solid var(--line);" onclick="closeDelModal()">Cancel</button>
+      <button id="delConfirmBtn" style="flex:1;background:#c0392b;border-color:#c0392b;
+              color:#fff;" onclick="confirmDel()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = "";
+let _tok = null;
+let _me  = null;
+let _delTarget = null;
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+(async function init() {
+  _tok = localStorage.getItem("vqa_token");
+  if (!_tok) { redirectLogin(); return; }
+
+  try {
+    const me = await apiFetch("/auth/me");
+    if (me.role !== "admin") { redirectLogin("Not an admin account."); return; }
+    _me = me;
+    document.getElementById("hdrEmail").textContent = me.email;
+    document.getElementById("loadingMsg").classList.add("hidden");
+    document.getElementById("mainContent").classList.remove("hidden");
+    loadAll();
+  } catch (e) {
+    showError("Authentication failed. " + (e.message || ""));
+  }
+})();
+
+function redirectLogin(msg) {
+  if (msg) alert("Admin access required. " + msg);
+  window.location.href = "/ui/";
+}
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(BASE + path, {
+    ...opts,
+    headers: { "Authorization": "Bearer " + _tok, "Content-Type": "application/json", ...(opts.headers||{}) },
+  });
+  if (!res.ok) {
+    const j = await res.json().catch(() => ({}));
+    throw new Error(j.detail || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+// ── Load everything ────────────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const [stats, users, videos] = await Promise.all([
+      apiFetch("/admin/stats"),
+      apiFetch("/admin/users"),
+      apiFetch("/admin/videos"),
+    ]);
+    renderStats(stats);
+    renderUsers(users);
+    renderVideos(videos);
+  } catch (e) {
+    showError("Failed to load admin data: " + e.message);
+  }
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function renderStats(s) {
+  document.getElementById("st-users").textContent  = s.total_users;
+  document.getElementById("st-admins").textContent = s.admin_count;
+  document.getElementById("st-videos").textContent = s.total_videos;
+  document.getElementById("st-ready").textContent  = s.ready_videos;
+  document.getElementById("st-failed").textContent = s.failed_videos;
+  document.getElementById("st-chunks").textContent = s.total_chunks.toLocaleString();
+}
+
+// ── Users table ────────────────────────────────────────────────────────────
+function renderUsers(users) {
+  document.getElementById("usersCount").textContent = `(${users.length})`;
+  const tbody = document.getElementById("usersBody");
+  tbody.innerHTML = "";
+  for (const u of users) {
+    const isSelf = _me && u.id === _me.id;
+    const isAdmin = u.role === "admin";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="td-email" title="${esc(u.email)}">${esc(u.email)}</td>
+      <td><span class="role ${u.role}">${u.role}</span></td>
+      <td><span class="dot ${u.email_verified ? 'yes' : 'no'}" title="${u.email_verified ? 'Verified' : 'Unverified'}"></span></td>
+      <td style="color:var(--mut);font-size:12px;">${esc(u.auth_provider||"local")}</td>
+      <td class="td-num">${u.video_count}</td>
+      <td class="td-num" style="color:var(--ok);">${u.ready_count}</td>
+      <td style="color:var(--mut);font-size:12px;">${fmtDate(u.created_at)}</td>
+      <td>
+        ${isSelf ? '<span style="font-size:11px;color:var(--mut);">You</span>' :
+          isAdmin
+            ? `<button class="btn-demote" onclick="setRole('${u.id}','user',this)">Revoke Admin</button>`
+            : `<button class="btn-promote" onclick="setRole('${u.id}','admin',this)">Make Admin</button>`
+        }
+      </td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+async function setRole(userId, role, btn) {
+  btn.disabled = true;
+  try {
+    await apiFetch(`/admin/users/${userId}/role`, {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    });
+    toast(`Role updated to "${role}"`);
+    await loadAll();
+  } catch (e) {
+    toast("Error: " + e.message);
+    btn.disabled = false;
+  }
+}
+
+// ── Videos table ───────────────────────────────────────────────────────────
+function renderVideos(videos) {
+  document.getElementById("videosCount").textContent = `(${videos.length})`;
+  const tbody = document.getElementById("videosBody");
+  tbody.innerHTML = "";
+  for (const v of videos) {
+    const tr = document.createElement("tr");
+    tr.id = "vrow-" + v.video_id;
+    tr.innerHTML = `
+      <td class="td-file" title="${esc(v.filename)}">${esc(v.filename)}</td>
+      <td class="td-email" title="${esc(v.owner_email)}" style="font-size:12px;color:var(--mut);">${esc(v.owner_email)}</td>
+      <td><span class="status ${v.status}">${v.status}</span></td>
+      <td class="td-num" style="color:var(--mut);">${v.chunk_count ?? "—"}</td>
+      <td style="color:var(--mut);font-size:12px;">${fmtDate(v.created_at)}</td>
+      <td><button class="btn-del" title="Delete" onclick="openDelModal('${esc(v.video_id)}','${esc(v.filename)}','${esc(v.owner_email)}')">🗑</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// ── Delete flow ────────────────────────────────────────────────────────────
+function openDelModal(vid, filename, owner) {
+  _delTarget = vid;
+  document.getElementById("delModalFile").textContent = filename;
+  document.getElementById("delModalOwner").textContent = owner;
+  document.getElementById("delModal").style.display = "flex";
+}
+
+function closeDelModal() {
+  _delTarget = null;
+  document.getElementById("delModal").style.display = "none";
+}
+
+async function confirmDel() {
+  if (!_delTarget) return;
+  const vid = _delTarget;
+  closeDelModal();
+  const row = document.getElementById("vrow-" + vid);
+  if (row) row.style.opacity = ".4";
+  try {
+    await apiFetch(`/admin/videos/${vid}`, { method: "DELETE" });
+    if (row) row.remove();
+    toast("Video deleted");
+    await loadAll();
+  } catch (e) {
+    if (row) row.style.opacity = "";
+    toast("Delete failed: " + e.message);
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function fmtDate(ts) {
+  if (!ts) return "—";
+  const d = new Date(ts * 1000);
+  return d.toLocaleDateString(undefined, {month:"short",day:"numeric",year:"numeric"});
+}
+
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+
+function showError(msg) {
+  document.getElementById("loadingMsg").classList.add("hidden");
+  const el = document.getElementById("errorMsg");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDelModal(); });
+</script>
+</body>
+</html>

@@ -9,7 +9,7 @@
   :root {
     --bg:#0b0f14; --panel:#141b24; --panel2:#0d1218; --line:#22303f;
     --fg:#e8edf2; --mut:#8a96a3; --acc:#4f9eff; --acc-dim:#2a4a78;
-    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80; --best:#ffd166;
+    --warn:#ffb454; --err:#ff6b6b; --ok:#5fcf80; --best:#ffd166; --adm:#c084fc;
   }
   * { box-sizing:border-box; }
   html,body { height:100%; margin:0; overflow:hidden; }
@@ -367,6 +367,7 @@
     <div class="sb-foot">
       <a href="/privacy" target="_blank" rel="noopener">Privacy</a>
       <a href="/terms" target="_blank" rel="noopener">Terms</a>
+      <a href="/admin" id="adminLink" class="hidden" style="color:var(--adm);">Admin ⚙</a>
     </div>
   </aside>
 
@@ -556,6 +557,12 @@ function showApp() {
     if (u && u.email) {
       localStorage.setItem(EMAIL_KEY, u.email);
       $("who").textContent = u.email;
+    }
+    // Show admin link for admins
+    const adminLink = $("adminLink");
+    if (adminLink) {
+      if (u && u.role === "admin") adminLink.classList.remove("hidden");
+      else adminLink.classList.add("hidden");
     }
   }).catch(() => {});
 }

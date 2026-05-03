@@ -70,6 +70,9 @@ from .compare import router as compare_router
 from .jobs import enqueue_video_job, queue_mode, start_worker
 from .pipeline_singleton import get_pipeline, index_write_lock
 from .schemas import (
+    AdminStatsOut,
+    AdminUserOut,
+    AdminVideoOut,
     AskIn,
     AskOut,
     ChangePasswordIn,
@@ -78,6 +81,7 @@ from .schemas import (
     JobStatusOut,
     LoginIn,
     ProcessIn,
+    SetRoleIn,
     ProcessOut,
     ProcessURLIn,
     ProcessURLOut,
@@ -166,6 +170,14 @@ def current_user(
     return user
 
 
+def require_admin(user: Dict[str, Any] = Depends(current_user)) -> Dict[str, Any]:
+    """Dependency: requires the caller to have role='admin'."""
+    full = db.get_user_by_id(user["id"])
+    if not full or full.get("role") != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Admin access required")
+    return full
+
+
 # ── Rate limiting helpers ──────────────────────────────────────────────
 def _client_ip(request: Request) -> str:
     forwarded = request.headers.get("x-forwarded-for")
@@ -200,6 +212,15 @@ def _startup() -> None:
         logger.info("[boot] Google OAuth configured — redirect URI: %s", _GOOGLE_REDIRECT_URI)
     else:
         logger.warning("[boot] Google OAuth NOT configured")
+
+    # Promote ADMIN_EMAIL to admin role on every boot (idempotent)
+    _admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    if _admin_email:
+        promoted = db.promote_admin_email(_admin_email)
+        if promoted:
+            logger.info("[boot] ADMIN_EMAIL=%s promoted to admin", _admin_email)
+        else:
+            logger.warning("[boot] ADMIN_EMAIL=%s not found in DB yet", _admin_email)
 
     # Start background worker (threading mode only — Redis mode uses external process)
     worker = start_worker()
@@ -286,12 +307,14 @@ def login(payload: LoginIn, request: Request) -> TokenOut:
 
 @app.get("/auth/me", response_model=UserOut, tags=["auth"])
 def me(user: Dict[str, Any] = Depends(current_user)) -> UserOut:
+    full = db.get_user_by_id(user["id"]) or user
     return UserOut(
-        id=user["id"],
-        email=user["email"],
-        created_at=user["created_at"],
-        email_verified=bool(user.get("email_verified", True)),
-        auth_provider=user.get("auth_provider") or "local",
+        id=full["id"],
+        email=full["email"],
+        created_at=full["created_at"],
+        email_verified=bool(full.get("email_verified", True)),
+        auth_provider=full.get("auth_provider") or "local",
+        role=full.get("role") or "user",
     )
 
 
@@ -978,6 +1001,78 @@ def ask_question(
         providers_tried=result.get("providers_tried", []) or [],
         bedrock_calls_used=result.get("bedrock_calls_used"),
     )
+
+
+# ── Admin panel ─────────────────────────────────────────────────────────
+@app.get("/admin", tags=["admin"], include_in_schema=False)
+def admin_page() -> FileResponse:
+    return FileResponse(str(Path(__file__).parent / "static" / "admin.html"),
+                        media_type="text/html")
+
+
+@app.get("/admin/stats", response_model=AdminStatsOut, tags=["admin"])
+def admin_stats(admin: Dict[str, Any] = Depends(require_admin)) -> AdminStatsOut:
+    """System-wide aggregate statistics. Admin only."""
+    return AdminStatsOut(**db.get_system_stats())
+
+
+@app.get("/admin/users", response_model=List[AdminUserOut], tags=["admin"])
+def admin_list_users(admin: Dict[str, Any] = Depends(require_admin)) -> List[AdminUserOut]:
+    """List all users with video counts. Admin only."""
+    return [AdminUserOut(**r) for r in db.list_all_users_admin()]
+
+
+@app.post("/admin/users/{user_id}/role", tags=["admin"])
+def admin_set_role(
+    user_id: str,
+    payload: SetRoleIn,
+    admin: Dict[str, Any] = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Change a user's role. Admin only. Cannot demote yourself."""
+    if user_id == admin["id"] and payload.role != "admin":
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            "Cannot remove your own admin role")
+    target = db.get_user_by_id(user_id)
+    if not target:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    db.set_user_role(user_id, payload.role)
+    logger.info("[admin] %s set role=%s for user=%s", admin["email"], payload.role, target["email"])
+    return {"user_id": user_id, "role": payload.role}
+
+
+@app.get("/admin/videos", response_model=List[AdminVideoOut], tags=["admin"])
+def admin_list_videos(admin: Dict[str, Any] = Depends(require_admin)) -> List[AdminVideoOut]:
+    """List all videos across all users. Admin only."""
+    rows = db.list_all_videos_admin()
+    result = []
+    for r in rows:
+        r = dict(r)
+        raw_url = r.get("file_url") or ""
+        r["file_url"] = storage.resolve_url(raw_url)
+        result.append(AdminVideoOut(**r))
+    return result
+
+
+@app.delete("/admin/videos/{video_id}", status_code=204, tags=["admin"])
+async def admin_delete_video(
+    video_id: str,
+    admin: Dict[str, Any] = Depends(require_admin),
+) -> None:
+    """Permanently delete any video regardless of owner. Admin only."""
+    video = db.get_video(video_id)
+    if not video:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Video '{video_id}' not found")
+    stored_url = video.get("file_url") or ""
+    db.delete_video(video_id)
+    logger.info("[admin-delete] admin=%s video_id=%s", admin["email"], video_id)
+    try:
+        await asyncio.to_thread(storage.delete, stored_url, video_id)
+    except Exception as exc:
+        logger.warning("[admin-delete] storage cleanup: %s", exc)
+    try:
+        await asyncio.to_thread(_purge_vector_index, video_id)
+    except Exception as exc:
+        logger.warning("[admin-delete] vector index cleanup: %s", exc)
 
 
 # ── Legal pages ─────────────────────────────────────────────────────────
