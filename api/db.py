@@ -498,10 +498,14 @@ def clear_otp(user_id: str) -> None:
 
 
 def invalidate_user_tokens(user_id: str) -> None:
+    # Store as integer seconds to match JWT iat precision.
+    # Using int(time.time()) means tokens issued in the same second as the
+    # password change are still valid — acceptable ~1 s window vs the
+    # alternative of rejecting freshly-issued tokens after a rapid re-login.
     with _conn() as c:
         c.execute(
             "UPDATE users SET tokens_invalidated_before = ? WHERE id = ?",
-            (time.time(), user_id),
+            (int(time.time()), user_id),
         )
 
 
