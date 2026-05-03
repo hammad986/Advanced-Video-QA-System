@@ -65,7 +65,7 @@ from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 
-from . import auth, db, storage
+from . import auth, db, email as _email, storage
 from .compare import router as compare_router
 from .jobs import enqueue_video_job, queue_mode, start_worker
 from .pipeline_singleton import get_pipeline, index_write_lock
@@ -285,6 +285,17 @@ def register(payload: RegisterIn, request: Request) -> TokenOut:
     db.set_email_verification(user["id"], ver_hash, ver_expiry)
 
     logger.info("[email_verify] CODE=%s  ← POST /auth/verify_email", ver_code)
+    _email.send_email(
+        to=payload.email,
+        subject="Verify your Video QA account",
+        body=(
+            f"Welcome to Video QA!\n\n"
+            f"Your verification code is: {ver_code}\n\n"
+            f"Enter this code at /auth/verify_email to activate your account.\n"
+            f"This code expires in 30 minutes.\n\n"
+            f"If you did not register, please ignore this email."
+        ),
+    )
     return TokenOut(**auth.issue_token(user["id"]))
 
 
@@ -300,7 +311,7 @@ def login(payload: LoginIn, request: Request) -> TokenOut:
     if not user.get("email_verified"):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Email not verified. Check server logs for code → POST /auth/verify_email.",
+            "Email not verified. Please check your inbox for the verification code.",
         )
     return TokenOut(**auth.issue_token(user["id"]))
 
@@ -356,6 +367,16 @@ def resend_verification(
     ver_expiry = time.time() + _EMAIL_VER_TTL
     db.set_email_verification(user["id"], ver_hash, ver_expiry)
     logger.info("[email_verify] CODE=%s  ← POST /auth/verify_email", ver_code)
+    _email.send_email(
+        to=payload.email,
+        subject="Your Video QA verification code",
+        body=(
+            f"Your new verification code is: {ver_code}\n\n"
+            f"Enter this code at /auth/verify_email to activate your account.\n"
+            f"This code expires in 30 minutes.\n\n"
+            f"If you did not request this, please ignore this email."
+        ),
+    )
     return ResendVerificationOut(message=_GENERIC)
 
 
@@ -397,6 +418,17 @@ def request_reset(payload: RequestResetIn, request: Request) -> RequestResetOut:
     expiry = time.time() + auth.OTP_TTL_SECONDS
     db.set_otp(user["id"], auth.hash_otp(otp), expiry)
     logger.info("[otp] OTP=%s  ← POST /auth/verify_otp", otp)
+    _email.send_email(
+        to=payload.email,
+        subject="Your Video QA password reset code",
+        body=(
+            f"Your verification code is: {otp}\n\n"
+            f"Use this code at /auth/verify_otp to confirm your identity, "
+            f"then reset your password at /auth/reset_password.\n"
+            f"This code expires in 10 minutes.\n\n"
+            f"If you did not request a password reset, please ignore this email."
+        ),
+    )
     return RequestResetOut(message=_GENERIC)
 
 
