@@ -117,8 +117,8 @@ requirements.txt    # Python dependencies
 ### Q&A
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | /ask_question | Ask a question against indexed videos (auth) |
-| POST | /compare_videos | Compare a question across multiple videos (auth) |
+| POST | /ask_question | Ask a question against indexed videos (auth). Returns answer + confidence_breakdown + hallucination_risk + cross_video_links. |
+| POST | /compare_videos | Compare a question across 2–8 videos (auth). Returns per-video confidence, topic-strength ranking, recommendation, and key differences. |
 
 ### System
 | Method | Path | Description |

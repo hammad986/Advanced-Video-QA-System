@@ -170,6 +170,25 @@ class SupportOut(BaseModel):
     support_score: float
 
 
+class ConfidenceBreakdownOut(BaseModel):
+    """Structured confidence breakdown from the deterministic scorer."""
+    avg_similarity: float = Field(description="Mean cosine similarity of retrieved chunks (0–1)")
+    context_overlap: float = Field(description="Fraction of answer words found in retrieved context (0–1)")
+    chunk_agreement: float = Field(description="Agreement between top-2 chunk scores (0–1)")
+    useful_chunks: int = Field(description="Chunks with similarity ≥ 0.50")
+    total_chunks: int = Field(description="Total chunks retrieved")
+    explanation: List[str] = Field(default_factory=list, description="Human-readable bullets")
+
+
+class CrossVideoLinkOut(BaseModel):
+    """Another user video that contains relevant content for the same question."""
+    video_id: str
+    filename: str
+    top_score: float = Field(description="Top FAISS similarity score (0–1)")
+    timestamp_span: Optional[str] = None
+    relevance_label: str = Field(description='"High" | "Medium" | "Low"')
+
+
 class AskOut(BaseModel):
     answer: str
     confidence: int
@@ -186,6 +205,18 @@ class AskOut(BaseModel):
     llm_latency_ms: Optional[int] = None
     providers_tried: List[str] = []
     bedrock_calls_used: Optional[int] = None
+    confidence_breakdown: Optional[ConfidenceBreakdownOut] = Field(
+        default=None,
+        description="Detailed confidence scoring breakdown (deterministic, no LLM)",
+    )
+    hallucination_risk: Optional[str] = Field(
+        default=None,
+        description='"None" | "Low" | "High" — derived from hallucination post-check',
+    )
+    cross_video_links: List[CrossVideoLinkOut] = Field(
+        default_factory=list,
+        description="Other user videos that contain relevant content for this question",
+    )
 
 
 # ── Misc ───────────────────────────────────────────────────────────────

@@ -242,6 +242,42 @@
   .ts:hover  { border-color:var(--acc); background:#22324a; }
   .ts.copied { border-color:var(--ok); color:var(--ok); }
 
+  /* ── Hallucination risk row ── */
+  .hcheck-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px; }
+  .hbadge { font-size:11px; font-weight:700; padding:3px 9px; border-radius:4px;
+            letter-spacing:.03em; }
+  .hbadge.ok   { background:#0e1f17; color:var(--ok); border:1px solid #1a5e34; }
+  .hbadge.warn { background:#1e1a0d; color:var(--warn); border:1px solid #5e4a0a; }
+  .hbadge.err  { background:#2a1414; color:var(--err); border:1px solid #5e1a1a; }
+  .hmeta { font-size:11px; color:var(--mut); font-family:ui-monospace,Menlo,monospace; }
+
+  /* ── Confidence breakdown ── */
+  .cb-grid { margin-top:6px; display:grid; gap:5px; }
+  .cb-row { display:flex; align-items:center; gap:8px; font-size:12px; }
+  .cb-lbl { width:145px; flex-shrink:0; color:var(--mut); }
+  .cb-bar { flex:1; height:5px; background:#1a2230; border-radius:3px; overflow:hidden; }
+  .cb-bar > div { height:100%; transition:width .35s; }
+  .cb-bar > div.c-hi { background:var(--ok); }
+  .cb-bar > div.c-md { background:var(--warn); }
+  .cb-bar > div.c-lo { background:var(--err); }
+  .cb-val { width:42px; text-align:right; font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--mut); }
+  .cb-meta { font-size:11px; color:var(--mut); margin-top:3px; }
+  .cb-bullet { font-size:12px; color:#8a96a3; line-height:1.55; }
+
+  /* ── Cross-video links ── */
+  .cv-list { display:grid; gap:5px; margin-top:6px; }
+  .cv-row { display:flex; align-items:center; gap:8px; padding:6px 10px;
+            background:var(--panel2); border:1px solid var(--line);
+            border-radius:5px; font-size:12px; }
+  .cv-name { flex:1; color:var(--fg); word-break:break-all; }
+  .cv-ts { font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--mut); flex-shrink:0; }
+  .cv-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:3px;
+              flex-shrink:0; text-transform:uppercase; letter-spacing:.04em; }
+  .cv-badge.ok  { background:#0e1f17; color:var(--ok); }
+  .cv-badge.warn { background:#1e1a0d; color:var(--warn); }
+  .cv-badge.mut { background:#1a2230; color:var(--mut); }
+  .cv-score { font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--mut); flex-shrink:0; }
+
   /* ── Utility ── */
   .err  { color:var(--err); font-size:13px; margin-top:8px; padding:10px 12px;
           background:#2a1414; border:1px solid #5e1a1a; border-radius:6px; }
@@ -394,6 +430,9 @@
       <div id="askStatusBanner"></div>
       <div class="answer" id="askAnswer"></div>
       <div id="askTimestamps" style="margin-top:12px;"></div>
+      <div id="askHallucinationRisk"></div>
+      <div id="askConfBreakdown"></div>
+      <div id="askCrossLinks"></div>
     </section>
 
     <!-- ── PASTE URL TAB ── -->
@@ -1003,6 +1042,75 @@ function renderAskResult(r) {
   $("askTimestamps").innerHTML = tsArr.length
     ? `<label style="margin-top:0">Evidence span</label>
        <div class="ts-row">${tsArr.map(t => tsChipHTML(t)).join("")}</div>` : "";
+
+  // ── Hallucination risk badge ──────────────────────────────────────────
+  const riskEl = $("askHallucinationRisk");
+  if (riskEl) {
+    const risk = r.hallucination_risk;
+    const sup  = r.support || {};
+    if (risk) {
+      const riskClass = risk === "None" ? "ok" : risk === "Low" ? "warn" : "err";
+      riskEl.innerHTML = `
+        <label style="margin-top:8px">Hallucination check</label>
+        <div class="hcheck-row">
+          <span class="hbadge ${riskClass}">Risk: ${escapeHtml(risk)}</span>
+          <span class="hmeta">semantic sim ${Number(sup.semantic_similarity||0).toFixed(3)}</span>
+          <span class="hmeta">keyword overlap ${Number(sup.keyword_overlap||0).toFixed(3)}</span>
+          <span class="hmeta">support score ${Number(sup.support_score||0).toFixed(3)}</span>
+        </div>`;
+    } else { riskEl.innerHTML = ""; }
+  }
+
+  // ── Confidence breakdown ───────────────────────────────────────────────
+  const cbEl = $("askConfBreakdown");
+  if (cbEl) {
+    const cb = r.confidence_breakdown;
+    if (cb) {
+      const bars = [
+        { label: "Retrieval similarity", val: cb.avg_similarity },
+        { label: "Keyword overlap",      val: cb.context_overlap },
+        { label: "Chunk agreement",      val: cb.chunk_agreement },
+      ];
+      cbEl.innerHTML = `
+        <label style="margin-top:8px">Confidence breakdown</label>
+        <div class="cb-grid">
+          ${bars.map(b => {
+            const pct = Math.round(b.val * 100);
+            const cls = pct >= 70 ? "c-hi" : pct >= 40 ? "c-md" : "c-lo";
+            return `<div class="cb-row">
+              <span class="cb-lbl">${escapeHtml(b.label)}</span>
+              <span class="cb-bar"><div class="${cls}" style="width:${pct}%"></div></span>
+              <span class="cb-val">${b.val.toFixed(3)}</span>
+            </div>`;
+          }).join("")}
+          <div class="cb-meta">${cb.useful_chunks}/${cb.total_chunks} useful chunks</div>
+          ${(cb.explanation||[]).map(e => `<div class="cb-bullet">· ${escapeHtml(e)}</div>`).join("")}
+        </div>`;
+    } else { cbEl.innerHTML = ""; }
+  }
+
+  // ── Cross-video links ─────────────────────────────────────────────────
+  const cvEl = $("askCrossLinks");
+  if (cvEl) {
+    const links = Array.isArray(r.cross_video_links) ? r.cross_video_links : [];
+    if (links.length) {
+      cvEl.innerHTML = `
+        <label style="margin-top:8px">Also found in other videos</label>
+        <div class="cv-list">
+          ${links.map(lk => {
+            const rlClass = lk.relevance_label === "High" ? "ok"
+              : lk.relevance_label === "Medium" ? "warn" : "mut";
+            return `<div class="cv-row">
+              <span class="cv-name">${escapeHtml(lk.filename)}</span>
+              <span class="cv-ts">${escapeHtml(lk.timestamp_span || "")}</span>
+              <span class="cv-badge ${rlClass}">${escapeHtml(lk.relevance_label)}</span>
+              <span class="cv-score">${Number(lk.top_score).toFixed(3)}</span>
+            </div>`;
+          }).join("")}
+        </div>`;
+    } else { cvEl.innerHTML = ""; }
+  }
+
   card.scrollIntoView({ behavior:"smooth", block:"start" });
 }
 

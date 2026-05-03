@@ -77,6 +77,8 @@ from .schemas import (
     AskOut,
     ChangePasswordIn,
     ChangePasswordOut,
+    ConfidenceBreakdownOut,
+    CrossVideoLinkOut,
     HealthOut,
     JobStatusOut,
     LoginIn,
@@ -107,6 +109,14 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
+# Suppress the noisy per-stage pipeline logs — they're useful during
+# development but clutter production output.  API-level loggers stay at INFO.
+for _noisy in ("video_qa.pipeline", "video_qa.retrieval", "video_qa.reranker",
+               "video_qa.answer_generator", "video_qa.query_rewriter",
+               "video_qa.embeddings", "video_qa.cache", "video_qa.temporal_neighbors",
+               "video_qa.hallucination_detector", "video_qa.confidence_scorer",
+               "video_qa.knowledge_structuring", "video_qa.query_router"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 # ── Constants ──────────────────────────────────────────────────────────
 MAX_UPLOAD_MB            = int(os.environ.get("VIDEO_QA_MAX_UPLOAD_MB", "300"))
@@ -1016,6 +1026,82 @@ def ask_question(
         }
 
     latency_ms = int((time.time() - t0) * 1000)
+
+    # ── PART 1a: Confidence breakdown (deterministic, no LLM) ──────────
+    confidence_breakdown: Optional[ConfidenceBreakdownOut] = None
+    try:
+        from video_qa.confidence_scorer import compute_confidence
+        contexts = result.get("contexts") or []
+        if contexts:
+            cb = compute_confidence(result.get("answer", ""), contexts)
+            bd = cb.get("breakdown", {})
+            confidence_breakdown = ConfidenceBreakdownOut(
+                avg_similarity=round(float(bd.get("avg_similarity", 0.0)), 3),
+                context_overlap=round(float(bd.get("context_overlap", 0.0)), 3),
+                chunk_agreement=round(float(bd.get("chunk_agreement", 0.0)), 3),
+                useful_chunks=int(cb.get("useful_chunks", 0)),
+                total_chunks=int(cb.get("total_chunks", 0)),
+                explanation=cb.get("explanation", []),
+            )
+    except Exception as _cb_err:
+        logger.warning("[ask] confidence_breakdown failed: %s", _cb_err)
+
+    # ── PART 1b: Hallucination risk label ──────────────────────────────
+    _support_status = (result.get("support") or {}).get("status", "")
+    hallucination_risk: Optional[str] = (
+        "None" if _support_status == "SUPPORTED"
+        else "Low" if _support_status == "PARTIAL"
+        else "High" if _support_status == "UNSUPPORTED"
+        else None
+    )
+
+    # ── PART 1c: Cross-video linking ───────────────────────────────────
+    # When the question is scoped to one video, do a lightweight FAISS
+    # lookup on every other ready video to find related content.
+    cross_video_links: List[CrossVideoLinkOut] = []
+    if scope is not None:
+        try:
+            from video_qa.retrieval import RetrievalSystem as _RS
+            _retriever = _RS()
+            if _retriever.is_available():
+                _CROSS_THRESH   = 0.55   # minimum top-chunk score to surface
+                _other_vids = [
+                    v for v in db.list_user_videos(user["id"])
+                    if v["status"] == "ready" and v["video_id"] != scope
+                ]
+                _link_candidates: List[Dict[str, Any]] = []
+                for _ov in _other_vids:
+                    _chunks = _retriever.retrieve(
+                        payload.query, top_k=1, video_id=_ov["video_id"]
+                    ) or []
+                    if not _chunks:
+                        continue
+                    _top_score = float(_chunks[0].get("score", 0.0))
+                    if _top_score < _CROSS_THRESH:
+                        continue
+                    _start = _chunks[0].get("start", 0)
+                    _end   = _chunks[0].get("end", 0)
+                    def _mmss(s: float) -> str:
+                        s = max(0, int(s)); return f"{s//60:02d}:{s%60:02d}"
+                    _ts = f"[{_mmss(_start)} - {_mmss(_end)}]"
+                    _rl = ("High" if _top_score >= 0.75
+                           else "Medium" if _top_score >= 0.60
+                           else "Low")
+                    _link_candidates.append({
+                        "video_id": _ov["video_id"],
+                        "filename": _ov["filename"],
+                        "top_score": round(_top_score, 4),
+                        "timestamp_span": _ts,
+                        "relevance_label": _rl,
+                    })
+                # Sort by score, keep top 3
+                _link_candidates.sort(key=lambda x: x["top_score"], reverse=True)
+                cross_video_links = [
+                    CrossVideoLinkOut(**lc) for lc in _link_candidates[:3]
+                ]
+        except Exception as _cv_err:
+            logger.warning("[ask] cross_video_links failed: %s", _cv_err)
+
     return AskOut(
         answer=result.get("answer", ""),
         confidence=int(result.get("confidence", 0) or 0),
@@ -1032,6 +1118,9 @@ def ask_question(
         llm_latency_ms=result.get("llm_latency_ms"),
         providers_tried=result.get("providers_tried", []) or [],
         bedrock_calls_used=result.get("bedrock_calls_used"),
+        confidence_breakdown=confidence_breakdown,
+        hallucination_risk=hallucination_risk,
+        cross_video_links=cross_video_links,
     )
 
 

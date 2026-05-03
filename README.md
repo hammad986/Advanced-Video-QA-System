@@ -1,128 +1,191 @@
-# Video-QA RAG: Evidence-Based Video Question Answering
+# Video-QA — Research-Grade RAG System
 
-## Short Description
-A research-grade, strict evidence-based Video Question Answering (Video-QA) system that leverages Retrieval Augmented Generation (RAG) to answer questions about lecture videos using only transcript evidence. Built for transparency, reliability, and extensibility.
-
----
-
-## Problem Statement
-Modern LLMs often hallucinate or provide unverifiable answers, especially for video content. This project addresses the challenge of building a Video-QA system that answers user questions strictly from the video transcript, with no hallucination and full evidence traceability.
+A production-ready Video Question-Answering system built on FastAPI. Upload videos or paste YouTube URLs, ask natural-language questions grounded in the actual spoken content. Every answer includes a timestamp, confidence score, hallucination check, and — when you have multiple videos — cross-video links and side-by-side comparisons.
 
 ---
 
-## Features
-- Upload or link lecture videos (YouTube supported)
-- Automatic audio extraction and speech-to-text transcription
-- Semantic chunking and vector-based retrieval (FAISS)
-- Evidence-based answer generation (LLM)
-- NLI-based answer verification (anti-hallucination)
-- Timestamped evidence display
-- Streamlit web UI for interactive use
-- Configurable pipeline and model selection
+## Architecture
+
+```
+Browser UI (index.html)
+        │
+        ▼
+FastAPI (api/main.py)  ──  compare router (api/compare.py)
+        │
+        ├── Auth layer (JWT + Google OAuth + email verification)
+        ├── Video ingest  ─► Worker thread (workers/video_worker.py)
+        │                        │
+        │                ┌───────┴──────────────────┐
+        │                ▼                          ▼
+        │         faster-whisper               yt-dlp (YouTube)
+        │         transcription
+        │                │
+        │         knowledge_structuring  (semantic chunking)
+        │                │
+        │         BGE embeddings  ──►  FAISS index
+        │
+        └── Query pipeline (video_qa/pipeline.py)
+                 │
+         ┌───────┴──────────────────────────────────┐
+         ▼                                           ▼
+   Query rewriter                           Summary router
+         │                            (instant for overview Qs)
+   FAISS retrieval (top-5)
+         │
+   Cross-encoder reranker
+         │
+   Temporal neighbour expansion
+         │
+   LLM answer generation  (Gemini → extractive fallback)
+         │
+   Confidence scorer  (deterministic, no LLM)
+         │
+   Hallucination post-check  (cosine sim + keyword overlap)
+         │
+   Cross-video linker  (lightweight FAISS pass on other videos)
+         │
+   Structured JSON response
+```
+
+**Storage** — SQLite (`data/video_qa.db`) for users, videos, jobs, rate-limit events. Video files and FAISS indexes live under `data/`.
+
+**Auth** — JWT bearer tokens (HS256, 24 h expiry). Google OAuth optional. Email verification required before login. Password reset via 6-digit OTP.
 
 ---
 
-## System Architecture
-![System Architecture](docs/architecture_diagram.png)
+## Setup
 
-- **Video Input** → **Audio Extraction** → **Speech Recognition (WhisperX)** → **Transcript Chunking** → **Embedding Generation (BGE/E5)** → **FAISS Vector Index** → **Similarity Retrieval** → **LLM Answer Generation** → **NLI Verification** → **UI Display**
+### Prerequisites
 
----
+| Tool | Version |
+|---|---|
+| Python | 3.10+ |
+| pip | latest |
+| ffmpeg | system-installed |
 
-## Technology Stack
-- Python 3.10+
-- Streamlit (UI)
-- FAISS (vector search)
-- HuggingFace Transformers (LLM, embeddings, NLI)
-- WhisperX (speech-to-text)
-- ffmpeg, yt-dlp (video/audio processing)
+### 1 — Install dependencies
 
----
+```bash
+pip install -r requirements.txt
+```
 
-## How It Works: RAG Pipeline
-1. **Video Upload/Link**: User provides a video file or YouTube URL.
-2. **Audio Extraction**: Audio is extracted using ffmpeg/yt-dlp.
-3. **Transcription**: WhisperX transcribes audio to text with timestamps.
-4. **Chunking**: Transcript is segmented into semantically meaningful chunks.
-5. **Embedding**: Chunks are embedded using BGE/E5 models.
-6. **Indexing**: Embeddings are indexed in FAISS for fast retrieval.
-7. **Question Answering**: User question is embedded and used to retrieve top-k relevant chunks.
-8. **LLM Answer Generation**: LLM generates an answer using only the retrieved evidence.
-9. **NLI Verification**: NLI model checks if the answer is strictly supported by the evidence.
-10. **UI Display**: Answer, evidence, and timestamps are shown in the web UI.
+### 2 — Environment variables
 
----
+| Variable | Required | Description |
+|---|---|---|
+| `JWT_SECRET` | Yes | Random secret for signing JWTs (min 32 chars) |
+| `DATABASE_URL` | No | PostgreSQL URL; omit to use SQLite |
+| `SMTP_EMAIL` | No | Gmail address for sending verification/OTP emails |
+| `SMTP_PASSWORD` | No | Gmail App Password (not your login password) |
+| `GOOGLE_CLIENT_ID` | No | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |
+| `GOOGLE_REDIRECT_URI` | No | OAuth callback URL (auto-set on Replit) |
+| `VIDEO_QA_MAX_UPLOAD_MB` | No | Max upload size in MB (default: 300) |
 
-## Installation Instructions
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/video-qa-rag.git
-   cd video-qa-rag
-   ```
-2. **Set up Python environment:**
-   ```bash
-   python -m venv my_project
-   source my_project/Scripts/activate  # On Windows: my_project\Scripts\activate.bat
-   pip install -r requirements.txt
-   ```
-3. **Configure API keys and settings:**
-   - Edit `config.yaml` to add your HuggingFace API key and adjust model settings as needed.
+### 3 — Run
+
+```bash
+uvicorn api.main:app --host 0.0.0.0 --port 5000
+```
+
+The UI is served at `/` and the interactive API docs at `/docs`.
 
 ---
 
-## Usage Instructions
-1. **Start the Streamlit app:**
-   ```bash
-   streamlit run video_qa/app.py
-   ```
-2. **Open your browser:**
-   - Go to [http://localhost:8501](http://localhost:8501)
-3. **Upload a video or enter a YouTube URL.**
-4. **Ask questions about the video.**
-5. **View answers with supporting evidence and timestamps.**
+## Key Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/auth/register` | Create account |
+| POST | `/auth/login` | Obtain JWT bearer token |
+| POST | `/upload_video` | Upload a video file (multipart, max 300 MB) |
+| POST | `/process_url` | Queue a YouTube URL for download + indexing |
+| GET | `/job_status/{job_id}` | Poll processing progress (0–100) |
+| GET | `/videos` | List your processed videos |
+| POST | `/ask_question` | Ask a question; returns answer + confidence + hallucination check + cross-video links |
+| POST | `/compare_videos` | Compare 2–8 videos on the same question |
+| GET | `/health` | Public health probe |
+| GET | `/docs` | Swagger UI |
+| GET | `/admin` | Admin panel (admin role required) |
 
 ---
 
-## Example Questions
-- "What is the main topic discussed at 10 minutes?"
-- "List the key points from the introduction."
-- "Who is the speaker?"
-- "What is the definition of retrieval augmented generation?"
-- "Summarize the section between 15:00 and 20:00."
+## `/ask_question` Response Contract
+
+```json
+{
+  "answer": "...",
+  "confidence": 82,
+  "confidence_label": "High",
+  "status": "SUPPORTED",
+  "timestamp": "[02:14 - 02:31]",
+  "hallucination_risk": "None",
+  "confidence_breakdown": {
+    "avg_similarity": 0.821,
+    "context_overlap": 0.714,
+    "chunk_agreement": 0.953,
+    "useful_chunks": 4,
+    "total_chunks": 5,
+    "explanation": ["High similarity across retrieved chunks", "Strong keyword overlap"]
+  },
+  "cross_video_links": [
+    {
+      "video_id": "abc123",
+      "filename": "lecture2.mp4",
+      "top_score": 0.774,
+      "timestamp_span": "[05:10 - 05:44]",
+      "relevance_label": "High"
+    }
+  ],
+  "support": {
+    "status": "SUPPORTED",
+    "semantic_similarity": 0.81,
+    "keyword_overlap": 0.62,
+    "support_score": 0.734
+  },
+  "latency_ms": 1240,
+  "cached": false
+}
+```
 
 ---
 
 ## Project Structure
+
 ```
-video-qa-rag/
-├── video_qa/
-│   ├── app.py                # Streamlit UI
-│   ├── video_processor.py    # Video/audio handling
-│   ├── speech_understanding.py # WhisperX transcription
-│   ├── knowledge_structuring.py # Chunking logic
-│   ├── embeddings.py         # Embedding & FAISS
-│   ├── retrieval.py          # Retrieval logic
-│   ├── reranker.py           # (Optional) Cross-encoder reranking
-│   ├── answer_generator.py   # LLM answer generation
-│   ├── evidence_verifier.py  # NLI verification
-│   ├── pipeline.py           # Pipeline orchestration
-│   └── ...
-├── config.yaml               # Configuration file
-├── requirements.txt          # Python dependencies
-├── README.md                 # Project documentation
-└── ...
+api/
+  main.py                  FastAPI app, all HTTP routes
+  compare.py               Multi-video comparison router
+  compare_gating.py        Comparability decision logic
+  compare_ranking.py       Topic-strength ranking layer
+  schemas.py               Pydantic request/response models
+  auth.py                  JWT + password hashing + Google OAuth
+  db.py                    SQLite/PostgreSQL data access
+  email.py                 SMTP email delivery (fire-and-forget)
+  jobs.py                  Background job queue (threading)
+  storage.py               Local file storage abstraction
+  static/
+    index.html             Main user UI
+    admin.html             Admin panel UI
+
+video_qa/
+  pipeline.py              9-stage RAG pipeline
+  retrieval.py             FAISS vector search
+  embeddings.py            BGE embedding model
+  confidence_scorer.py     Deterministic confidence scoring
+  hallucination_detector.py  Post-check: cosine sim + keyword overlap
+  answer_generator.py      LLM answer generation + fallback chain
+  reranker.py              Cross-encoder reranker
+  query_rewriter.py        Query optimisation
+  query_router.py          Summary routing + lecture summaries
+  temporal_neighbors.py    Prev/next chunk expansion
+
+workers/
+  video_worker.py          Background transcription + indexing
+
+data/
+  video_qa.db              SQLite database (auto-created)
+  media/                   Uploaded video files
+  cache/                   FAISS indexes per video
+  summaries/               Pre-computed lecture summaries
 ```
-
----
-
-## Future Improvements
-- Support for multi-lingual videos
-- Advanced reranking and hybrid retrieval
-- Integration with more LLM providers
-- Enhanced UI/UX and analytics
-- Docker deployment and cloud support
-- Automated evaluation and benchmarking
-
----
-
-> **This project implements a strict, evidence-based Video Question Answering system using Retrieval Augmented Generation. Answers are always grounded in transcript evidence—no hallucinations, just facts.**
